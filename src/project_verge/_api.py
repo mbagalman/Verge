@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Tuple
 
 import numpy as np
@@ -9,14 +10,14 @@ from ._fit import fit_exponential_model, fit_logistic_model, prepare_inputs
 from ._types import GrowthAnalysis, ModelFit
 
 
-def fit_exponential(time, values) -> ModelFit:
-    normalized_time, normalized_values = prepare_inputs(time, values, min_points=8)
-    return fit_exponential_model(normalized_time, normalized_values, min_points=8)
+def fit_exponential(time, values, *, min_points: int = 8) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+    return fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
 
 
-def fit_logistic(time, values) -> ModelFit:
-    normalized_time, normalized_values = prepare_inputs(time, values, min_points=8)
-    return fit_logistic_model(normalized_time, normalized_values, min_points=8)
+def fit_logistic(time, values, *, min_points: int = 8) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+    return fit_logistic_model(normalized_time, normalized_values, min_points=min_points)
 
 
 def analyze_growth(
@@ -60,7 +61,7 @@ def analyze_growth(
 
     assumptions = (
         "The comparison is limited to exponential and logistic growth.",
-        "Likelihood is computed under a shared Gaussian error model on log values.",
+        "Likelihood is computed under a shared log-normal observation model.",
         "Posterior probabilities are approximated from BIC with user-specified priors.",
         "Inputs are assumed to be positive, finite, and nondecreasing.",
     )
@@ -101,5 +102,7 @@ def _posterior_model_weights(
 
 
 def _validate_priors(prior_exponential: float, prior_logistic: float) -> None:
+    if not math.isfinite(prior_exponential) or not math.isfinite(prior_logistic):
+        raise ValueError("model priors must be finite")
     if prior_exponential <= 0.0 or prior_logistic <= 0.0:
         raise ValueError("model priors must be strictly positive")

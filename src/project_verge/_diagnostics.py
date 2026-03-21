@@ -4,7 +4,12 @@ from typing import Callable, Tuple
 
 import numpy as np
 
-from ._fit import fit_exponential_model, fit_logistic_model
+from ._fit import (
+    exponential_curve,
+    fit_exponential_model,
+    fit_logistic_model,
+    logistic_curve,
+)
 from ._types import Diagnostics, ModelFit
 
 
@@ -20,7 +25,6 @@ def build_diagnostics(
     exp_forecast_mae = _forward_chaining_mae(time, values, fit_exponential_model, min_train=5)
     log_forecast_mae = _forward_chaining_mae(time, values, fit_logistic_model, min_train=6)
     identifiability_warnings = _logistic_identifiability_warnings(time, values, logistic_fit)
-    merged_warnings = tuple(dict.fromkeys(logistic_fit.warnings + identifiability_warnings))
 
     return Diagnostics(
         per_capita_slope=float(per_capita_slope),
@@ -28,11 +32,14 @@ def build_diagnostics(
         residual_curvature_score=float(residual_curvature_score),
         forecast_mae_exponential=float(exp_forecast_mae),
         forecast_mae_logistic=float(log_forecast_mae),
-        identifiability_warnings=merged_warnings,
+        fit_warnings=logistic_fit.warnings,
+        identifiability_warnings=identifiability_warnings,
     )
 
 
 def _per_capita_regression(time: np.ndarray, values: np.ndarray) -> Tuple[float, float]:
+    # This diagnostic depends on time differences, not on the absolute time origin,
+    # so shifting the series to start at zero does not change the fitted slope/intercept.
     delta_t = np.diff(time)
     delta_y = np.diff(values)
     per_capita_growth = delta_y / (delta_t * values[:-1])
@@ -58,6 +65,8 @@ def _forward_chaining_mae(
 ) -> float:
     errors = []
 
+    # Logistic has one more curve parameter than exponential, so we require one
+    # additional training observation before attempting rolling forecasts.
     for split_index in range(min_train, len(values)):
         train_time = time[:split_index]
         train_values = values[:split_index]
@@ -68,10 +77,14 @@ def _forward_chaining_mae(
 
         future_time = np.array([time[split_index]])
         if fit.model_name == "exponential":
-            prediction = fit.parameters["a"] * np.exp(fit.parameters["r"] * future_time)
+            prediction = exponential_curve(future_time, fit.parameters["a"], fit.parameters["r"])
         else:
-            exp_term = np.exp(-fit.parameters["r"] * (future_time - fit.parameters["t0"]))
-            prediction = fit.parameters["K"] / (1.0 + exp_term)
+            prediction = logistic_curve(
+                future_time,
+                fit.parameters["K"],
+                fit.parameters["r"],
+                fit.parameters["t0"],
+            )
 
         error = abs(np.log(values[split_index]) - np.log(np.clip(prediction[0], np.finfo(float).tiny, None)))
         errors.append(float(error))

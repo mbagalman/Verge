@@ -61,6 +61,37 @@ def test_analyze_growth_marks_early_logistic_as_indeterminate():
 
     assert result.is_indeterminate
     assert result.preferred_model == "indeterminate"
+    assert result.diagnostics.identifiability_warnings
+
+
+def test_fit_functions_accept_custom_min_points():
+    time = np.linspace(0.0, 4.0, 6)
+    values = 2.0 * np.exp(0.2 * time)
+
+    exponential_fit = fit_exponential(time, values, min_points=6)
+    logistic_fit = fit_logistic(time, values, min_points=6)
+
+    assert exponential_fit.converged
+    assert logistic_fit.converged
+
+
+def test_fit_functions_enforce_custom_min_points():
+    time = np.linspace(0.0, 4.0, 5)
+    values = 2.0 * np.exp(0.2 * time)
+
+    with pytest.raises(ValueError, match="at least 6"):
+        fit_exponential(time, values, min_points=6)
+
+    with pytest.raises(ValueError, match="at least 6"):
+        fit_logistic(time, values, min_points=6)
+
+
+@pytest.mark.parametrize("prior", [float("nan"), float("inf")])
+def test_analysis_rejects_non_finite_priors(prior):
+    time, values = _exp_series()
+
+    with pytest.raises(ValueError, match="finite"):
+        analyze_growth(time, values, prior_exponential=prior)
 
 
 @pytest.mark.parametrize(
@@ -86,3 +117,11 @@ def test_analysis_handles_large_time_origin_and_value_scale():
     assert np.isfinite(result.p_exponential)
     assert np.isfinite(result.p_logistic)
     assert result.p_exponential > result.p_logistic
+
+
+def test_fitted_values_are_read_only():
+    time, values = _exp_series()
+    fit = fit_exponential(time, values)
+
+    with pytest.raises(ValueError):
+        fit.fitted_values[0] = -1.0

@@ -30,10 +30,10 @@ The package returns an approximate probability for each model using posterior mo
 pip install project-verge
 ```
 
-For local development:
+For local development, install the package in editable mode before running tests or examples:
 
 ```bash
-python3 -m pip install -e .[dev]
+python3 -m pip install -e '.[dev]'
 ```
 
 ## Quick Start
@@ -51,6 +51,7 @@ print(result.p_exponential)
 print(result.p_logistic)
 print(result.preferred_model)
 print(result.is_indeterminate)
+print(result.diagnostics.fit_warnings)
 print(result.diagnostics.identifiability_warnings)
 ```
 
@@ -60,11 +61,13 @@ print(result.diagnostics.identifiability_warnings)
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
-### `fit_exponential(time, values)`
+`GrowthAnalysis.diagnostics.fit_warnings` contains optimizer or fit-process warnings, while `GrowthAnalysis.diagnostics.identifiability_warnings` contains interpretation warnings specific to whether the logistic bend is actually identified by the observed window.
+
+### `fit_exponential(time, values, *, min_points=8)`
 
 Fits the exponential model and returns a `ModelFit`.
 
-### `fit_logistic(time, values)`
+### `fit_logistic(time, values, *, min_points=8)`
 
 Fits the logistic model and returns a `ModelFit`.
 
@@ -100,6 +103,11 @@ They should be read as model-comparison evidence, not as a universal forecast pr
 Run the test suite with:
 
 ```bash
-PYTHONPATH=src python3 -m pytest
+python3 -m pytest
 ```
 
+Run linting with:
+
+```bash
+python3 -m ruff check .
+```

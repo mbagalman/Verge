@@ -21,14 +21,14 @@ Build a public Python library that compares exponential and logistic growth for 
 - [x] Add supporting diagnostics and indeterminate-state logic
 - [x] Add tests for model recovery, classification, ambiguity, and validation
 - [x] Add README, example script, license, and CI workflow
-- [ ] Publish repository to GitHub
+- [x] Publish repository to GitHub
 - [ ] Add package release workflow and first tagged release
 
 ## Current Status / Next Actions
 
 - Core MVP implementation is in place in `src/project_verge/`.
 - Tests cover the key statistical and validation paths.
-- Immediate next step: create the GitHub repository, review naming and packaging metadata, and decide whether to publish to PyPI after one external review.
+- Immediate next step: review package metadata one more time, add a release workflow, and decide whether to publish to PyPI after one external review.
 
 ## Open Questions and Risks
 
@@ -47,10 +47,32 @@ Build a public Python library that compares exponential and logistic growth for 
 
 ## Code Review Issues
 
-- No open code review issues yet.
+- Resolved on 2026-03-21:
+  - Added `min_points` to `fit_exponential` and `fit_logistic`.
+  - Rejected non-finite priors explicitly.
+  - Unified public wording on the shared log-normal observation model.
+  - Documented the extra BIC parameter count for the observation-noise scale.
+  - Relaxed the logistic lower bound on `K` and improved the midpoint initialization heuristic.
+  - Kept the internal `min_points` guard, but documented why it remains for rolling-window callers.
+  - Split `Diagnostics.fit_warnings` from `Diagnostics.identifiability_warnings`.
+  - Reused shared curve helpers inside forward-chaining forecasts and documented the asymmetric minimum training windows.
+  - Made `ModelFit.fitted_values` read-only by copying and freezing the array.
+  - Added package metadata for PyPI discoverability.
+  - Added `ruff` linting to CI and aligned README development instructions with the CI install flow.
+- Assessed and not changed:
+  - The per-capita regression uses time differences only, so shifting the series origin to zero does not change the reported slope or intercept. A clarifying code comment was added instead of changing the diagnostic.
+
+### Round 2 — open issues (2026-03-21)
+
+- Resolved on 2026-03-21:
+  - Restored the logistic `K` lower bound to remain just above the observed maximum.
+  - Documented `Diagnostics.fit_warnings` in the README and surfaced it in the Quick Start snippet.
+  - Added negative tests to confirm custom `min_points` enforcement.
+  - Verified that the published Git remote matches `https://github.com/mbagalman/Verge`, so the current `pyproject.toml` URLs are correct.
 
 ## Decision Log
 
 - 2026-03-21: Chose a library-first MVP instead of building a CLI first.
 - 2026-03-21: Defined the headline probability as model evidence under explicit assumptions, not as a universal forecast truth score.
 - 2026-03-21: Limited v1 support to exponential vs logistic comparison on positive, nondecreasing series.
+- 2026-03-21: Accepted the first review round, with one per-capita diagnostic note treated as a documentation clarification rather than a behavioral bug.

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, Sequence, Tuple
+from typing import Callable, Sequence, Tuple
 
 import numpy as np
 from scipy.optimize import least_squares
@@ -99,6 +99,8 @@ def _fit_model(
     bounds: Tuple[np.ndarray, np.ndarray],
     min_points: int,
 ) -> ModelFit:
+    # Internal callers also use these fitters directly on smaller rolling windows,
+    # so we keep the minimum-length guard here instead of relying only on prepare_inputs.
     if len(time) < min_points:
         raise ValueError(f"{model_name} fitting requires at least {min_points} points")
 
@@ -121,6 +123,8 @@ def _fit_model(
         rss = float(np.sum(resids**2))
         sigma2 = max(rss / len(values), 1e-12)
         log_likelihood = -0.5 * len(values) * (np.log(2.0 * np.pi * sigma2) + 1.0)
+        # Count the observation-noise scale parameter alongside the curve parameters
+        # so the BIC reflects the full log-normal observation model.
         parameter_count = len(parameter_names) + 1
         bic = parameter_count * np.log(len(values)) - 2.0 * log_likelihood
         if not result.success:
@@ -164,15 +168,20 @@ def _bounds_exponential(time: np.ndarray, values: np.ndarray) -> Tuple[np.ndarra
 def _initial_guess_logistic(time: np.ndarray, values: np.ndarray) -> np.ndarray:
     span = max(float(time[-1] - time[0]), 1.0)
     growth_rate = max((np.log(values[-1]) - np.log(values[0])) / span, 1e-4)
-    carrying_capacity = max(float(np.max(values)) * 2.0, values[-1] + 1e-6)
-    midpoint = float(time[len(time) // 2])
+    observed_max = float(np.max(values))
+    carrying_capacity = max(observed_max * 1.5, values[-1] + max(observed_max - values[0], observed_max * 0.1))
+    half_capacity = 0.5 * carrying_capacity
+    if values[-1] < half_capacity:
+        midpoint = float(time[-1] + 0.5 * span)
+    else:
+        midpoint = float(time[np.argmin(np.abs(values - half_capacity))])
     return np.array([carrying_capacity, growth_rate, midpoint], dtype=float)
 
 
 def _bounds_logistic(time: np.ndarray, values: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     span = max(float(time[-1] - time[0]), 1.0)
     max_value = max(float(np.max(values)), 1.0)
+    # K is the logistic ceiling, so it must remain just above the observed maximum.
     lower = np.array([max_value * (1.0 + 1e-6), 1e-12, time[0] - 4.0 * span], dtype=float)
     upper = np.array([max_value * 1e4, max(10.0, 25.0 / span), time[-1] + 4.0 * span], dtype=float)
     return lower, upper
-

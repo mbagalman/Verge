@@ -12,6 +12,7 @@ def run_case(name, time, values):
     print(f"  p_logistic={result.p_logistic:.3f}")
     print(f"  preferred_model={result.preferred_model}")
     print(f"  is_indeterminate={result.is_indeterminate}")
+    print(f"  fit_warnings={result.diagnostics.fit_warnings}")
     print(f"  identifiability_warnings={result.diagnostics.identifiability_warnings}")
     print()
 
@@ -31,4 +32,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

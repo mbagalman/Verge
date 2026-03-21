@@ -18,6 +18,11 @@ class ModelFit:
     converged: bool
     warnings: Tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        fitted_values = np.array(self.fitted_values, dtype=float, copy=True)
+        fitted_values.setflags(write=False)
+        object.__setattr__(self, "fitted_values", fitted_values)
+
 
 @dataclass(frozen=True)
 class Diagnostics:
@@ -28,6 +33,7 @@ class Diagnostics:
     residual_curvature_score: float
     forecast_mae_exponential: float
     forecast_mae_logistic: float
+    fit_warnings: Tuple[str, ...] = ()
     identifiability_warnings: Tuple[str, ...] = ()
 
 
@@ -43,4 +49,3 @@ class GrowthAnalysis:
     logistic_fit: ModelFit
     diagnostics: Diagnostics
     assumptions: Tuple[str, ...]
-
