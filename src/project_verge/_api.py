@@ -1,0 +1,105 @@
+from __future__ import annotations
+
+from typing import Tuple
+
+import numpy as np
+
+from ._diagnostics import build_diagnostics
+from ._fit import fit_exponential_model, fit_logistic_model, prepare_inputs
+from ._types import GrowthAnalysis, ModelFit
+
+
+def fit_exponential(time, values) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(time, values, min_points=8)
+    return fit_exponential_model(normalized_time, normalized_values, min_points=8)
+
+
+def fit_logistic(time, values) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(time, values, min_points=8)
+    return fit_logistic_model(normalized_time, normalized_values, min_points=8)
+
+
+def analyze_growth(
+    time,
+    values,
+    *,
+    prior_exponential: float = 0.5,
+    prior_logistic: float = 0.5,
+    min_points: int = 8,
+) -> GrowthAnalysis:
+    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+    _validate_priors(prior_exponential, prior_logistic)
+
+    exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
+    logistic_fit = fit_logistic_model(normalized_time, normalized_values, min_points=min_points)
+
+    p_exponential, p_logistic = _posterior_model_weights(
+        exponential_fit,
+        logistic_fit,
+        prior_exponential=prior_exponential,
+        prior_logistic=prior_logistic,
+    )
+
+    diagnostics = build_diagnostics(
+        normalized_time,
+        normalized_values,
+        exponential_fit=exponential_fit,
+        logistic_fit=logistic_fit,
+    )
+    logistic_poorly_identified = len(diagnostics.identifiability_warnings) > 0
+    winning_weight = max(p_exponential, p_logistic)
+    leading_model = "exponential" if p_exponential >= p_logistic else "logistic"
+    is_indeterminate = winning_weight < 0.70 or (
+        leading_model == "logistic" and logistic_poorly_identified
+    )
+
+    if is_indeterminate:
+        preferred_model = "indeterminate"
+    else:
+        preferred_model = leading_model
+
+    assumptions = (
+        "The comparison is limited to exponential and logistic growth.",
+        "Likelihood is computed under a shared Gaussian error model on log values.",
+        "Posterior probabilities are approximated from BIC with user-specified priors.",
+        "Inputs are assumed to be positive, finite, and nondecreasing.",
+    )
+
+    return GrowthAnalysis(
+        p_exponential=float(p_exponential),
+        p_logistic=float(p_logistic),
+        preferred_model=preferred_model,
+        is_indeterminate=is_indeterminate,
+        exponential_fit=exponential_fit,
+        logistic_fit=logistic_fit,
+        diagnostics=diagnostics,
+        assumptions=assumptions,
+    )
+
+
+def _posterior_model_weights(
+    exponential_fit: ModelFit,
+    logistic_fit: ModelFit,
+    *,
+    prior_exponential: float,
+    prior_logistic: float,
+) -> Tuple[float, float]:
+    bics = np.array([exponential_fit.bic, logistic_fit.bic], dtype=float)
+    priors = np.array([prior_exponential, prior_logistic], dtype=float)
+
+    finite_mask = np.isfinite(bics)
+    if not np.any(finite_mask):
+        raise RuntimeError("Neither model produced a valid fit.")
+
+    min_bic = np.min(bics[finite_mask])
+    log_weights = np.full(2, -np.inf, dtype=float)
+    log_weights[finite_mask] = np.log(priors[finite_mask]) - 0.5 * (bics[finite_mask] - min_bic)
+    normalization = np.logaddexp.reduce(log_weights[finite_mask])
+    probabilities = np.zeros(2, dtype=float)
+    probabilities[finite_mask] = np.exp(log_weights[finite_mask] - normalization)
+    return float(probabilities[0]), float(probabilities[1])
+
+
+def _validate_priors(prior_exponential: float, prior_logistic: float) -> None:
+    if prior_exponential <= 0.0 or prior_logistic <= 0.0:
+        raise ValueError("model priors must be strictly positive")
