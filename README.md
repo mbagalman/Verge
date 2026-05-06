@@ -57,9 +57,13 @@ print(result.diagnostics.identifiability_warnings)
 
 ## API
 
-### `analyze_growth(time, values, *, prior_exponential=0.5, prior_logistic=0.5, min_points=8)`
+### `analyze_growth(time, values, *, prior_exponential=0.5, prior_logistic=0.5, min_points=8, min_fit_quality=0.85)`
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
+
+`min_fit_quality` is the log-space R² floor that each candidate model is held to. When *both* models fall below it, the verdict is forced to `indeterminate` with `indeterminate_reason = "neither_model_fits"`, so a polynomial or other out-of-family series cannot quietly produce a confident-looking exponential-vs-logistic split.
+
+`GrowthAnalysis.indeterminate_reason` is `None` when the verdict is decisive, and otherwise one of `"neither_model_fits"`, `"ambiguous_evidence"`, or `"logistic_unidentifiable"`.
 
 `GrowthAnalysis.diagnostics.fit_warnings` contains optimizer or fit-process warnings, while `GrowthAnalysis.diagnostics.identifiability_warnings` contains interpretation warnings specific to whether the logistic bend is actually identified by the observed window.
 

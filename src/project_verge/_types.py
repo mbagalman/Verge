@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Tuple
+from typing import Mapping, Optional, Tuple
 
 import numpy as np
 
@@ -15,6 +15,7 @@ class ModelFit:
     fitted_values: np.ndarray
     log_likelihood: float
     bic: float
+    log_r_squared: float
     converged: bool
     warnings: Tuple[str, ...] = ()
 
@@ -45,6 +46,7 @@ class GrowthAnalysis:
     p_logistic: float
     preferred_model: str
     is_indeterminate: bool
+    indeterminate_reason: Optional[str]
     exponential_fit: ModelFit
     logistic_fit: ModelFit
     diagnostics: Diagnostics

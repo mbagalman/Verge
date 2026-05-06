@@ -43,6 +43,7 @@ def test_analyze_growth_prefers_exponential_for_clear_exponential_series():
     assert result.p_logistic < 0.20
     assert result.preferred_model == "exponential"
     assert not result.is_indeterminate
+    assert result.indeterminate_reason is None
 
 
 def test_analyze_growth_prefers_logistic_for_clear_logistic_series():
@@ -53,6 +54,7 @@ def test_analyze_growth_prefers_logistic_for_clear_logistic_series():
     assert result.p_exponential < 0.20
     assert result.preferred_model == "logistic"
     assert not result.is_indeterminate
+    assert result.indeterminate_reason is None
 
 
 def test_analyze_growth_marks_early_logistic_as_indeterminate():
@@ -61,7 +63,39 @@ def test_analyze_growth_marks_early_logistic_as_indeterminate():
 
     assert result.is_indeterminate
     assert result.preferred_model == "indeterminate"
+    assert result.indeterminate_reason == "logistic_unidentifiable"
     assert result.diagnostics.identifiability_warnings
+
+
+def test_analyze_growth_marks_polynomial_as_neither_model_fits():
+    # Cubic growth is neither exponential nor logistic. With a strict fit
+    # threshold both models fall short, and the verdict should be the
+    # structured "neither_model_fits" indeterminate, not a confident pick.
+    time = np.linspace(1.0, 12.0, 16)
+    values = time ** 3
+
+    result = analyze_growth(time, values, min_fit_quality=0.99)
+
+    assert result.is_indeterminate
+    assert result.preferred_model == "indeterminate"
+    assert result.indeterminate_reason == "neither_model_fits"
+    assert result.exponential_fit.log_r_squared < 0.99
+    assert result.logistic_fit.log_r_squared < 0.99
+
+
+def test_log_r_squared_is_near_one_for_clean_exponential():
+    time, values = _exp_series(a=3.0, r=0.12, n=16)
+    fit = fit_exponential(time, values)
+
+    assert fit.log_r_squared > 0.999
+
+
+@pytest.mark.parametrize("bad_quality", [float("nan"), float("inf"), 1.5])
+def test_analysis_rejects_invalid_min_fit_quality(bad_quality):
+    time, values = _exp_series()
+
+    with pytest.raises(ValueError):
+        analyze_growth(time, values, min_fit_quality=bad_quality)
 
 
 def test_fit_functions_accept_custom_min_points():

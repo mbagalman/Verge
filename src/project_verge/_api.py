@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -27,9 +27,11 @@ def analyze_growth(
     prior_exponential: float = 0.5,
     prior_logistic: float = 0.5,
     min_points: int = 8,
+    min_fit_quality: float = 0.85,
 ) -> GrowthAnalysis:
     normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
     _validate_priors(prior_exponential, prior_logistic)
+    _validate_fit_quality(min_fit_quality)
 
     exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
     logistic_fit = fit_logistic_model(normalized_time, normalized_values, min_points=min_points)
@@ -47,17 +49,29 @@ def analyze_growth(
         exponential_fit=exponential_fit,
         logistic_fit=logistic_fit,
     )
-    logistic_poorly_identified = len(diagnostics.identifiability_warnings) > 0
-    winning_weight = max(p_exponential, p_logistic)
-    leading_model = "exponential" if p_exponential >= p_logistic else "logistic"
-    is_indeterminate = winning_weight < 0.70 or (
-        leading_model == "logistic" and logistic_poorly_identified
-    )
 
-    if is_indeterminate:
-        preferred_model = "indeterminate"
+    leading_model = "exponential" if p_exponential >= p_logistic else "logistic"
+    winning_weight = max(p_exponential, p_logistic)
+    both_fits_poor = (
+        exponential_fit.log_r_squared < min_fit_quality
+        and logistic_fit.log_r_squared < min_fit_quality
+    )
+    logistic_poorly_identified = len(diagnostics.identifiability_warnings) > 0
+
+    # Reason precedence: an absolute fit-quality failure dominates relative
+    # model comparison, which in turn dominates a logistic-only identifiability
+    # caveat. Only one reason is reported even when several apply.
+    if both_fits_poor:
+        indeterminate_reason: Optional[str] = "neither_model_fits"
+    elif winning_weight < 0.70:
+        indeterminate_reason = "ambiguous_evidence"
+    elif leading_model == "logistic" and logistic_poorly_identified:
+        indeterminate_reason = "logistic_unidentifiable"
     else:
-        preferred_model = leading_model
+        indeterminate_reason = None
+
+    is_indeterminate = indeterminate_reason is not None
+    preferred_model = "indeterminate" if is_indeterminate else leading_model
 
     assumptions = (
         "The comparison is limited to exponential and logistic growth.",
@@ -71,6 +85,7 @@ def analyze_growth(
         p_logistic=float(p_logistic),
         preferred_model=preferred_model,
         is_indeterminate=is_indeterminate,
+        indeterminate_reason=indeterminate_reason,
         exponential_fit=exponential_fit,
         logistic_fit=logistic_fit,
         diagnostics=diagnostics,
@@ -106,3 +121,10 @@ def _validate_priors(prior_exponential: float, prior_logistic: float) -> None:
         raise ValueError("model priors must be finite")
     if prior_exponential <= 0.0 or prior_logistic <= 0.0:
         raise ValueError("model priors must be strictly positive")
+
+
+def _validate_fit_quality(min_fit_quality: float) -> None:
+    if not math.isfinite(min_fit_quality):
+        raise ValueError("min_fit_quality must be finite")
+    if min_fit_quality > 1.0:
+        raise ValueError("min_fit_quality must be at most 1.0")

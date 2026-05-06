@@ -127,6 +127,7 @@ def _fit_model(
         # so the BIC reflects the full log-normal observation model.
         parameter_count = len(parameter_names) + 1
         bic = parameter_count * np.log(len(values)) - 2.0 * log_likelihood
+        log_r_squared = _log_space_r_squared(values, rss)
         if not result.success:
             warnings.append(result.message)
         return ModelFit(
@@ -135,6 +136,7 @@ def _fit_model(
             fitted_values=fitted_values,
             log_likelihood=float(log_likelihood),
             bic=float(bic),
+            log_r_squared=float(log_r_squared),
             converged=bool(result.success),
             warnings=tuple(warnings),
         )
@@ -146,9 +148,19 @@ def _fit_model(
             fitted_values=np.full_like(values, np.nan, dtype=float),
             log_likelihood=float("-inf"),
             bic=float("inf"),
+            log_r_squared=float("-inf"),
             converged=False,
             warnings=tuple(warnings),
         )
+
+
+def _log_space_r_squared(values: np.ndarray, rss: float) -> float:
+    log_values = np.log(values)
+    tss = float(np.sum((log_values - np.mean(log_values)) ** 2))
+    if tss <= 0.0:
+        # All observations equal on the log scale; any sensible fit is perfect.
+        return 1.0
+    return 1.0 - rss / tss
 
 
 def _initial_guess_exponential(time: np.ndarray, values: np.ndarray) -> np.ndarray:
