@@ -170,4 +170,8 @@ def _should_show_logistic_intervals(result: "GrowthAnalysis") -> bool:
 def _fmt(value: float) -> str:
     if not math.isfinite(value):
         return "n/a"
-    return f"{value:.3g}"
+    # 4 significant figures so year-scale values like 2000 / 2010 render as
+    # "2000" / "2010" rather than the scientific-notation "2e+03" / "2.01e+03"
+    # that ``:.3g`` produces; trailing zeros on smaller magnitudes are still
+    # stripped by the general format.
+    return f"{value:.4g}"

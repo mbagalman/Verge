@@ -138,6 +138,34 @@ plt.show()
 
 Pass an existing `ax` to compose with other axes; pass `extrapolate_fraction=0` to plot only the observed range; pass `envelope=False` to suppress the envelope (or `envelope=True` to force a fresh bootstrap when none is cached on the result). A runnable example lives at [examples/demo_plot.py](examples/demo_plot.py).
 
+## Worked example: world population
+
+[examples/world_population.py](examples/world_population.py) runs Verge on world-population estimates at milestone years from 1750 through 2022 ([data file](examples/data/un_population.csv), drawn from the UN World Population Prospects 2022 revision plus standard pre-1950 historical estimates). The script is deliberately set up to compare two analysis windows on the *same* dataset, because Verge's verdict is a function of what data you give it — not a universal claim about the future:
+
+```
+============================================================
+Full history (1750-2022)
+============================================================
+Verdict: accelerating (exponential, 0.79 confidence).
+Per-capita slope: +0.0008194; forecast log-MAE (exponential): 0.286.
+Prediction for 2050: 8.25B (90% CI [7.31, 10.67]B)
+Prediction for 2100: 12.86B (90% CI [11.17, 19.39]B)
+
+============================================================
+Post-1950 only (demographic transition window)
+============================================================
+Verdict: leveling off (logistic, 1.00 confidence; 90% CI [0.67, 1.00]).
+Estimated ceiling K ~= 12.98 [11.78, 14.2].
+Estimated inflection time ~= 2004 [1997, 2012].
+Per-capita slope: -0.002296; forecast log-MAE (logistic): 0.0113.
+Prediction for 2050: 10.06B (90% CI [9.74, 10.24]B)
+Prediction for 2100: 12.11B (90% CI [11.24, 12.76]B)
+```
+
+The two windows give opposite verdicts honestly. Pre-1950 the data is dominated by ~200 years of acceleration, and Verge says so. Post-1950 the demographic transition is visible — Verge identifies a logistic bend with carrying capacity `K ≈ 13B` (90% CI roughly 12B–14B), an inflection year around 2004, and a 2050 prediction of 10B (90% CI 9.7–10.2B). The post-1950 predictions land close to UN's central forecasts (≈9.7B in 2050, ≈10.4B peak around the 2080s); the wider full-history CIs honestly reflect that a fit dominated by the long acceleration cannot pin down the eventual ceiling.
+
+Run it yourself with `python examples/world_population.py` to see the side-by-side plot.
+
 ## API
 
 ### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
@@ -261,7 +289,9 @@ Bootstrap intervals on `K`, `t0`, and prediction horizons are pair-bootstrap per
 
 - `src/project_verge/`: library source
 - `tests/`: unit tests
-- `examples/demo_growth_analysis.py`: runnable demonstration
+- `examples/demo_growth_analysis.py`: runnable demonstration on synthetic series
+- `examples/demo_plot.py`: matplotlib visualization demo
+- `examples/world_population.py` (+ `examples/data/un_population.csv`): real-data worked example on world population
 - `docs/methodology.md`: design notebook walking through the diagnostic intuitions
 - `PROJECT_PLAN.md`: project plan and decision log
 - `TICKETS.md`: prioritized backlog of methodology, code, and docs work
