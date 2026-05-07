@@ -27,7 +27,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 | **done** (`0907752`) |
 | T-06 | Wire diagnostics (slope sig., curvature sig., forecast MAE) into verdict | P1 | M+C | M | — | **done** (`f0d76df`) |
 | T-07 | Bootstrap CI on the model weights themselves | P1 | M+C | S | T-02 | **done** (`6271730`) |
-| T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 | open |
+| T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 | **done** (`ea50a77`) |
 | T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | open |
 | T-10 | Failure-modes section in README | P1 | D | S | T-01 | open |
 | T-11 | Real-data example (UN population) | P1 | D | S | — | open |
@@ -186,7 +186,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-08: `GrowthAnalysis.predict(time, *, ci=0.9)`
-**Category:** Code · **Effort:** S · **Depends on:** T-02
+**Category:** Code · **Effort:** S · **Depends on:** T-02 · **Status:** Done in commit `ea50a77`
 
 **Problem.** User has no ergonomic way to ask "predicted value at horizon X." Today they must grab `fit.parameters` and re-run the curve function manually.
 
