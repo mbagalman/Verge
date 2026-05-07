@@ -25,7 +25,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-03 | `GrowthAnalysis.summary()` with human-readable verdict | P0 | C | S | T-02 (soft) | **done** (`397a3d5`) |
 | T-04 | Reframe README around the real question + show indeterminate case | P0 | D | S | T-03 | **done** (`c769031`) |
 | T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 | **done** (`0907752`) |
-| T-06 | Wire diagnostics (slope sig., curvature sig., forecast MAE) into verdict | P1 | M+C | M | — | open |
+| T-06 | Wire diagnostics (slope sig., curvature sig., forecast MAE) into verdict | P1 | M+C | M | — | **done** (`f0d76df`) |
 | T-07 | Bootstrap CI on the model weights themselves | P1 | M+C | S | T-02 | open |
 | T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 | open |
 | T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | open |
@@ -149,7 +149,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-06: Wire diagnostics into the verdict
-**Category:** Methodology + Code · **Effort:** M
+**Category:** Methodology + Code · **Effort:** M · **Status:** Done in commit `f0d76df`
 
 **Problem.** `per_capita_slope`, `residual_curvature_score`, and forecast MAE are computed in [_diagnostics.py](src/project_verge/_diagnostics.py) but never feed the verdict or the indeterminate decision. The user's question is best answered by signal *agreement*, not BIC alone.
 
@@ -163,6 +163,8 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Test: case where BIC favors logistic but slope and forecast MAE disagree → indeterminate
 
 **Files.** [_diagnostics.py](src/project_verge/_diagnostics.py), [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), tests
+
+**Implementation note.** The signal-agreement gate is **asymmetric** by design — it only second-guesses the logistic verdict, not exponential or linear. Per-capita slope and log-residual curvature are *also* significantly negative for clean linear data (`b/y` decreases with `y`; `log(a + b*t)` is concave), so a symmetric "signals must agree with leading_model" gate would over-fire on every clean linear case. BIC's three-way comparison from T-05 already weighs exponential vs linear vs logistic against each other; the supporting signals only need to second-guess the logistic branch. An end-to-end "BIC says logistic but signals disagree" test is not added because clean monotone synthetic logistic data always fires all three signals at p < 1e-6 — the gate is designed for noisier real-world inputs that the v1 input contract does not yet allow. Once T-15 (smoothing / noise tolerance) lands the gate will see real use; for now the helper unit test plus the linear-passthrough test verify correctness on the inputs supported.
 
 ---
 
