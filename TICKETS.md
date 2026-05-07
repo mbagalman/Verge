@@ -24,7 +24,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-02 | Bootstrap CI on K, t0, and predicted value | P0 | M+C | M | — | **done** (`eb37fe1`) |
 | T-03 | `GrowthAnalysis.summary()` with human-readable verdict | P0 | C | S | T-02 (soft) | **done** (`397a3d5`) |
 | T-04 | Reframe README around the real question + show indeterminate case | P0 | D | S | T-03 | **done** (`c769031`) |
-| T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 | open |
+| T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 | **done** (`0907752`) |
 | T-06 | Wire diagnostics (slope sig., curvature sig., forecast MAE) into verdict | P1 | M+C | M | — | open |
 | T-07 | Bootstrap CI on the model weights themselves | P1 | M+C | S | T-02 | open |
 | T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 | open |
@@ -129,7 +129,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ## P1 — High-value features
 
 ### T-05: Add a third "linear-in-log" / sub-exponential baseline
-**Category:** Methodology · **Effort:** M · **Depends on:** T-01
+**Category:** Methodology · **Effort:** M · **Depends on:** T-01 · **Status:** Done in commit `0907752`
 
 **Problem.** Binary frame forces every series into exp or logistic. A power-law or linear-in-y series is silently misclassified. Three-way frame (*accelerating / steady / leveling-off*) maps onto the user's question much more directly.
 
@@ -141,6 +141,8 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - `preferred_model` accepts the new third value
 - Verdict surface in `summary()` updated to use the user-facing labels
 - Tests for known power-law and linear series
+
+**Implementation note.** Picked **linear-in-y** (`y = a + b*t`) over the power-law option. Rationale: linear maps cleanly to one verdict (`steady`), where power-law spans both accelerating (`k > 1`) and decelerating (`0 < k < 1`) regimes and would muddy the verdict mapping; linear matches exponential on parameter count (2) so the BIC penalty is symmetric; and linear avoids the awkward `t = 0` handling power-law would need. Polynomial / sub-exponential growth that linear cannot capture still falls through to T-01's `neither_model_fits` exit, which is the honest answer for those out-of-family cases. The verdict surface is now four-way: `accelerating` (exponential preferred), `steady` (linear preferred), `leveling off` (logistic preferred), `indeterminate`. The previous label `still growing` was renamed to `accelerating` so the three growing verdicts are parallel.
 
 **Files.** [_fit.py](src/project_verge/_fit.py), [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), tests
 
