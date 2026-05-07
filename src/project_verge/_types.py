@@ -82,3 +82,15 @@ class GrowthAnalysis:
     diagnostics: Diagnostics
     assumptions: Tuple[str, ...]
     logistic_intervals: Optional[BootstrapIntervals]
+
+    def summary(self) -> str:
+        """Return a short human-readable verdict suitable for ``print(result)``."""
+
+        # Local import: ``_summary`` references ``GrowthAnalysis`` for type
+        # checking, so importing it at module load would create a cycle.
+        from ._summary import format_summary
+
+        return format_summary(self)
+
+    def __repr__(self) -> str:
+        return self.summary()
