@@ -29,7 +29,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-07 | Bootstrap CI on the model weights themselves | P1 | M+C | S | T-02 | **done** (`6271730`) |
 | T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 | **done** (`ea50a77`) |
 | T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | **done** (`3b4d7f8`) |
-| T-10 | Failure-modes section in README | P1 | D | S | T-01 | open |
+| T-10 | Failure-modes section in README | P1 | D | S | T-01 | **done** (`c9c528f`) |
 | T-11 | Real-data example (UN population) | P1 | D | S | — | open |
 | T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | open |
 | T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — | open |
@@ -222,7 +222,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-10: Failure-modes section in README
-**Category:** Docs · **Effort:** S · **Depends on:** T-01
+**Category:** Docs · **Effort:** S · **Depends on:** T-01 · **Status:** Done in commit `c9c528f`
 
 **Problem.** User can't tell what'll happen if their data violates assumptions.
 
