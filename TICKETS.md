@@ -30,7 +30,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 | **done** (`ea50a77`) |
 | T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | **done** (`3b4d7f8`) |
 | T-10 | Failure-modes section in README | P1 | D | S | T-01 | **done** (`c9c528f`) |
-| T-11 | Real-data example (UN population) | P1 | D | S | — | open |
+| T-11 | Real-data example (UN population) | P1 | D | S | — | **done** (`d81238d`) |
 | T-27 | Power-law shape detection (catches polynomial misclassification) | P1 | M | M | T-01 | **done** (`9e63106`) |
 | T-28 | Auto-downgrade verdict on wide weight CI (catches random-walk fragility) | P1 | M+C | S | T-07 | **done** (`ecab902`) |
 | T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | open |
@@ -248,7 +248,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-11: Real-data example
-**Category:** Docs · **Effort:** S
+**Category:** Docs · **Effort:** S · **Status:** Done in commit `d81238d`
 
 **Problem.** Examples use synthetic curves only. Trust comes from real-data demos.
 
