@@ -69,17 +69,18 @@ def test_summary_for_early_logistic_marks_indeterminate_with_reason():
     assert "carrying capacity is not identified" in summary
 
 
-def test_summary_for_polynomial_marks_neither_model_fits_and_omits_K():
+def test_summary_for_polynomial_marks_power_law_shape_and_omits_K():
+    # Post-T-27: polynomial growth has its own indeterminate reason rather
+    # than falling through to neither_model_fits.
     time = np.linspace(1.0, 12.0, 16)
     values = time ** 3
 
-    result = analyze_growth(time, values, min_fit_quality=0.99, n_boot=0)
+    result = analyze_growth(time, values, n_boot=0)
     summary = result.summary()
 
     assert "indeterminate" in summary
-    assert "neither_model_fits" in summary
-    assert "None of the candidate models" in summary
-    assert "Log-space R^2" in summary
+    assert "power_law_shape" in summary
+    assert "power-law shape" in summary
     # The underlying logistic fit is untrustworthy here, so K must not be
     # advertised in the summary even if the bootstrap had run.
     assert "Estimated ceiling" not in summary

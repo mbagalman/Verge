@@ -129,6 +129,7 @@ class WeightIntervals:
     p_exponential: Interval
     p_linear: Interval
     p_logistic: Interval
+    p_power_law: Interval
 
 
 @dataclass(frozen=True)
@@ -138,12 +139,14 @@ class GrowthAnalysis:
     p_exponential: float
     p_linear: float
     p_logistic: float
+    p_power_law: float
     preferred_model: str
     is_indeterminate: bool
     indeterminate_reason: Optional[str]
     exponential_fit: ModelFit
     linear_fit: ModelFit
     logistic_fit: ModelFit
+    power_law_fit: ModelFit
     diagnostics: Diagnostics
     assumptions: Tuple[str, ...]
     logistic_intervals: Optional[BootstrapIntervals]
@@ -229,6 +232,9 @@ class GrowthAnalysis:
                 times_norm, params["K"], params["r"], params["t0"]
             )
         else:
+            # power_law is diagnostic-only and never becomes preferred (the
+            # gate forces ``indeterminate`` first), so reaching this branch
+            # would mean an internal inconsistency.
             raise RuntimeError(
                 f"unhandled preferred_model: {self.preferred_model!r}"
             )

@@ -16,10 +16,11 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
 ## What v1 answers
 
 - The verdict (`accelerating` / `steady` / `leveling off` / `indeterminate`) and a one-line `summary()` you can `print()`.
-- Posterior model weights `p_exponential`, `p_linear`, and `p_logistic` as approximate model-comparison evidence (BIC under a shared log-normal observation model).
+- Posterior model weights `p_exponential`, `p_linear`, `p_logistic`, and `p_power_law` as approximate model-comparison evidence (BIC under a shared log-normal observation model). Power-law is a diagnostic-only candidate — it competes for BIC weight but never becomes the preferred verdict; when it wins the result is `indeterminate (reason: power_law_shape)`.
 - When the logistic verdict is the focus, a pair-bootstrap percentile interval for the carrying capacity `K`, the inflection time `t0`, and predicted values at any horizons you supply.
 - A structured `indeterminate_reason` so callers can branch on *why* a verdict is being withheld:
-  - `neither_model_fits` — none of the candidate models (exponential, linear, logistic) explains the data well on the log scale (e.g. polynomial growth)
+  - `neither_model_fits` — none of the candidate models (exponential, linear, logistic, power-law) explains the data well on the log scale
+  - `power_law_shape` — the data is best described by a power-law shape (`y ≈ a · t^k`), which v1 has no clean verdict for; this catches polynomial growth that would otherwise misclassify as logistic
   - `ambiguous_evidence` — no model is decisively preferred by BIC
   - `logistic_unidentifiable` — the logistic bend is not pinned down by the observed window
   - `signal_disagreement` — BIC prefers logistic but the supporting diagnostics (per-capita slope, log-residual curvature, forecast MAE) do not all agree
@@ -96,7 +97,7 @@ Verdict: indeterminate (reason: logistic_unidentifiable).
 The logistic carrying capacity is not identified by the observed window.
 Estimated ceiling K ~= 200 [200, 200].
 Estimated inflection time ~= 12 [12, 12].
-Per-capita slope: -0.002307; posterior weights: exponential 0.00 [0.00, 0.00], linear 0.00 [0.00, 0.00], logistic 1.00 [1.00, 1.00].
+Per-capita slope: -0.002307; posterior weights: exponential 0.00 [0.00, 0.00], linear 0.00 [0.00, 0.00], logistic 1.00 [1.00, 1.00], power-law 0.00 [0.00, 0.00].
 ```
 
 The bootstrap intervals look implausibly tight here because the demo inputs are perfectly clean synthetic curves; on real noisy data they widen to reflect the true sampling uncertainty in the fit. The verdict-line CI (e.g. `90% CI [1.00, 1.00]`) is a percentile interval on the winning posterior weight itself — a wide CI here means the headline confidence is fragile under resampling. The `accelerating` and `steady` cases show no CI because bootstrap is gated to run only when the logistic verdict is the focus or the result is indeterminate. For programmatic access rather than a printed summary, every value in the rendered output is also a typed attribute on `GrowthAnalysis` — `p_exponential`, `p_linear`, `p_logistic`, `preferred_model`, `is_indeterminate`, `indeterminate_reason`, `logistic_intervals.K`, `weight_intervals.p_logistic`, etc.
@@ -138,7 +139,7 @@ Pass an existing `ax` to compose with other axes; pass `extrapolate_fraction=0` 
 
 ## API
 
-### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, min_points=8, min_fit_quality=0.85, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
+### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
@@ -162,6 +163,10 @@ Fits the linear model `y = a + b*t` (in y-units, with residuals computed in log-
 
 Fits the logistic model and returns a `ModelFit`.
 
+### `fit_power_law(time, values, *, min_points=8)`
+
+Fits the power-law model `y = a * (t + 1)**k` via OLS in log-log space and returns a `ModelFit`. Power-law is a diagnostic-only candidate in v1; the headline verdict never becomes "power-law" (when it wins, the result is `indeterminate (reason: power_law_shape)`).
+
 ## Input Contract
 
 Version 1 assumes:
@@ -180,9 +185,9 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 
 **Signature.** Series shaped like `y ∝ t^k` for some `k > 0` — cubic, square-root, anything that is not pure exponential, linear, or sigmoid.
 
-**Library response.** At the default `min_fit_quality=0.85`, a cubic series like `y = t**3` quietly classifies as `leveling off` with high BIC weight on logistic. The logistic curve has enough flexibility to fit polynomial growth on the log scale to R² ≈ 0.96, which clears the default quality floor.
+**Library response.** Verge fits a power-law candidate (`y = a · (t + 1)^k`) alongside the three primary models. When BIC picks power-law as the leading shape, the verdict is forced to `indeterminate (reason: power_law_shape)`, since v1's verdict surface (still growing / steady / leveling off) has no clean answer for power-law growth. A cubic series like `y = t**3` returns `indeterminate (reason: power_law_shape)` at the default `min_fit_quality`.
 
-**Mitigation.** Raise the threshold when polynomial growth is plausible: `analyze_growth(time, values, min_fit_quality=0.99)`. With the strict floor the same cubic returns `indeterminate (reason: neither_model_fits)`. The trade-off is that mildly imperfect *correct* exponential or logistic data may also be flagged as "neither fits"; calibrate to the noise level you expect in your domain.
+**Mitigation.** None needed: at the default threshold the library now flags power-law growth honestly rather than misclassifying it as logistic. If you want the underlying power-law fit, it lives at `result.power_law_fit` and the weight at `result.p_power_law`.
 
 ### Step change or regime shift
 
@@ -240,7 +245,7 @@ The verdict is one of four categorical labels — `accelerating`, `steady`, `lev
 
 The reported confidence is the posterior model weight of the winning model, approximated from BIC under the shared log-normal observation model. Those weights are:
 
-- conditioned on exponential, linear, and logistic being the three candidates
+- conditioned on exponential, linear, logistic, and power-law being the four candidates (power-law is diagnostic-only — when it wins, the verdict is `indeterminate (reason: power_law_shape)` rather than a new fourth verdict)
 - conditioned on the log-normal observation model
 - approximate, because BIC is used as a tractable proxy for full Bayesian model evidence
 

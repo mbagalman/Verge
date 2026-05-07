@@ -12,6 +12,7 @@ from ._fit import (
     fit_exponential_model,
     fit_linear_model,
     fit_logistic_model,
+    fit_power_law_model,
     linear_curve,
     logistic_curve,
 )
@@ -218,22 +219,25 @@ def bootstrap_model_weights(
     prior_exponential: float = 0.5,
     prior_linear: float = 0.5,
     prior_logistic: float = 0.5,
+    prior_power_law: float = 0.5,
     n_boot: int = 500,
     confidence: float = 0.90,
     seed: Optional[int] = None,
 ) -> WeightIntervals:
     """Pair-bootstrap percentile intervals for the BIC-derived posterior weights.
 
-    Resamples ``(time, values)`` pairs with replacement, refits all three
-    candidate models (exponential, linear, logistic) on each resample,
-    recomputes the BIC-derived three-way weights, and returns percentile
-    intervals at the requested ``confidence`` level. Resamples where every
-    fit fails to produce a finite BIC are skipped and counted via
-    ``n_successful``.
+    Resamples ``(time, values)`` pairs with replacement, refits all four
+    candidate models (exponential, linear, logistic, power-law) on each
+    resample, recomputes the BIC-derived four-way weights, and returns
+    percentile intervals at the requested ``confidence`` level. Resamples
+    where every fit fails to produce a finite BIC are skipped and counted
+    via ``n_successful``.
     """
 
     _validate_confidence(confidence)
-    _validate_weight_priors(prior_exponential, prior_linear, prior_logistic)
+    _validate_weight_priors(
+        prior_exponential, prior_linear, prior_logistic, prior_power_law
+    )
     if n_boot < 0:
         raise ValueError("n_boot must be non-negative")
 
@@ -247,6 +251,7 @@ def bootstrap_model_weights(
     p_exp_samples: List[float] = []
     p_lin_samples: List[float] = []
     p_log_samples: List[float] = []
+    p_pow_samples: List[float] = []
 
     for _ in range(n_boot):
         idx = rng.integers(0, n, size=n)
@@ -258,23 +263,27 @@ def bootstrap_model_weights(
             exp_fit = fit_exponential_model(t_boot, y_boot, min_points=_BOOTSTRAP_MIN_POINTS)
             lin_fit = fit_linear_model(t_boot, y_boot, min_points=_BOOTSTRAP_MIN_POINTS)
             log_fit = fit_logistic_model(t_boot, y_boot, min_points=_BOOTSTRAP_MIN_POINTS)
+            pow_fit = fit_power_law_model(t_boot, y_boot, min_points=_BOOTSTRAP_MIN_POINTS)
         except ValueError:
             continue
 
-        weights = _three_way_weights(
+        weights = _four_way_weights(
             exp_fit.bic,
             lin_fit.bic,
             log_fit.bic,
+            pow_fit.bic,
             prior_exponential=prior_exponential,
             prior_linear=prior_linear,
             prior_logistic=prior_logistic,
+            prior_power_law=prior_power_law,
         )
         if weights is None:
             continue
-        p_exp, p_lin, p_log = weights
+        p_exp, p_lin, p_log, p_pow = weights
         p_exp_samples.append(p_exp)
         p_lin_samples.append(p_lin)
         p_log_samples.append(p_log)
+        p_pow_samples.append(p_pow)
 
     n_successful = len(p_exp_samples)
     return WeightIntervals(
@@ -284,33 +293,39 @@ def bootstrap_model_weights(
         p_exponential=_percentile_interval(p_exp_samples, confidence),
         p_linear=_percentile_interval(p_lin_samples, confidence),
         p_logistic=_percentile_interval(p_log_samples, confidence),
+        p_power_law=_percentile_interval(p_pow_samples, confidence),
     )
 
 
-def _three_way_weights(
+def _four_way_weights(
     bic_exp: float,
     bic_lin: float,
     bic_log: float,
+    bic_pow: float,
     *,
     prior_exponential: float,
     prior_linear: float,
     prior_logistic: float,
+    prior_power_law: float,
 ) -> Optional[tuple]:
-    """Normalize BIC-derived weights across three models. Returns ``None`` when
+    """Normalize BIC-derived weights across four models. Returns ``None`` when
     no model has a finite BIC."""
 
-    bics = np.array([bic_exp, bic_lin, bic_log], dtype=float)
-    priors = np.array([prior_exponential, prior_linear, prior_logistic], dtype=float)
+    bics = np.array([bic_exp, bic_lin, bic_log, bic_pow], dtype=float)
+    priors = np.array(
+        [prior_exponential, prior_linear, prior_logistic, prior_power_law],
+        dtype=float,
+    )
     finite_mask = np.isfinite(bics)
     if not np.any(finite_mask):
         return None
     min_bic = np.min(bics[finite_mask])
-    log_weights = np.full(3, -np.inf, dtype=float)
+    log_weights = np.full(4, -np.inf, dtype=float)
     log_weights[finite_mask] = np.log(priors[finite_mask]) - 0.5 * (bics[finite_mask] - min_bic)
     normalization = np.logaddexp.reduce(log_weights[finite_mask])
-    probabilities = np.zeros(3, dtype=float)
+    probabilities = np.zeros(4, dtype=float)
     probabilities[finite_mask] = np.exp(log_weights[finite_mask] - normalization)
-    return float(probabilities[0]), float(probabilities[1]), float(probabilities[2])
+    return tuple(float(p) for p in probabilities)
 
 
 def _prepare_bootstrap_inputs(time, values):

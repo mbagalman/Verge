@@ -19,8 +19,8 @@ _VERDICT_LABEL = {
 
 _INDETERMINATE_NOTE = {
     "neither_model_fits": (
-        "None of the candidate models (exponential, linear, logistic) explains "
-        "this data well on the log scale."
+        "None of the candidate models (exponential, linear, logistic, power-law) "
+        "explains this data well on the log scale."
     ),
     "ambiguous_evidence": (
         "Posterior weights are too close to call between the candidate models."
@@ -31,6 +31,11 @@ _INDETERMINATE_NOTE = {
     "signal_disagreement": (
         "BIC prefers logistic, but the supporting diagnostics (per-capita slope, "
         "log-residual curvature, forecast MAE) do not all point to leveling off."
+    ),
+    "power_law_shape": (
+        "The data is best described by a power-law shape (y ~ a * t**k); v1 has "
+        "no clean verdict for power-law growth (it is neither leveling off nor "
+        "purely exponential / linear)."
     ),
 }
 
@@ -130,7 +135,8 @@ def _format_indeterminate_weights(result: "GrowthAnalysis") -> str:
             "posterior weights: "
             f"exponential {result.p_exponential:.2f}, "
             f"linear {result.p_linear:.2f}, "
-            f"logistic {result.p_logistic:.2f}"
+            f"logistic {result.p_logistic:.2f}, "
+            f"power-law {result.p_power_law:.2f}"
         )
     return (
         "posterior weights: "
@@ -139,7 +145,9 @@ def _format_indeterminate_weights(result: "GrowthAnalysis") -> str:
         f"linear {result.p_linear:.2f} "
         f"[{intervals.p_linear.low:.2f}, {intervals.p_linear.high:.2f}], "
         f"logistic {result.p_logistic:.2f} "
-        f"[{intervals.p_logistic.low:.2f}, {intervals.p_logistic.high:.2f}]"
+        f"[{intervals.p_logistic.low:.2f}, {intervals.p_logistic.high:.2f}], "
+        f"power-law {result.p_power_law:.2f} "
+        f"[{intervals.p_power_law.low:.2f}, {intervals.p_power_law.high:.2f}]"
     )
 
 

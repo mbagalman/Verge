@@ -88,20 +88,36 @@ def test_analyze_growth_marks_early_logistic_as_indeterminate():
     assert result.diagnostics.identifiability_warnings
 
 
-def test_analyze_growth_marks_polynomial_as_neither_model_fits():
-    # Cubic growth is neither exponential nor logistic. With a strict fit
-    # threshold both models fall short, and the verdict should be the
-    # structured "neither_model_fits" indeterminate, not a confident pick.
+def test_analyze_growth_marks_polynomial_as_power_law_shape_at_default_threshold():
+    # Cubic growth is neither exponential, linear, nor logistic. T-27 added a
+    # power-law candidate so polynomial inputs now fire "power_law_shape" at
+    # the default min_fit_quality (no manual tuning needed); pre-T-27 they
+    # silently classified as logistic.
     time = np.linspace(1.0, 12.0, 16)
     values = time ** 3
 
-    result = analyze_growth(time, values, min_fit_quality=0.99)
+    result = analyze_growth(time, values)
 
     assert result.is_indeterminate
     assert result.preferred_model == "indeterminate"
+    assert result.indeterminate_reason == "power_law_shape"
+    assert result.power_law_fit.log_r_squared > result.logistic_fit.log_r_squared
+    assert result.p_power_law > 0.95
+
+
+def test_analyze_growth_marks_step_change_as_neither_model_fits():
+    # A flat-then-exponential series fits none of the four candidates well;
+    # log-space R^2 stays below the default 0.85 floor across the board, so
+    # the verdict is the structured "neither_model_fits" indeterminate.
+    time = np.linspace(0.0, 10.0, 16)
+    flat = np.full(8, 1.0)
+    expo = 1.0 * np.exp(0.5 * (time[8:] - time[8]))
+    values = np.concatenate([flat, expo])
+
+    result = analyze_growth(time, values)
+
+    assert result.is_indeterminate
     assert result.indeterminate_reason == "neither_model_fits"
-    assert result.exponential_fit.log_r_squared < 0.99
-    assert result.logistic_fit.log_r_squared < 0.99
 
 
 def test_log_r_squared_is_near_one_for_clean_exponential():

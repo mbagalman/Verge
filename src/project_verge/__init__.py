@@ -1,6 +1,12 @@
 """Public package interface for Project Verge."""
 
-from ._api import analyze_growth, fit_exponential, fit_linear, fit_logistic
+from ._api import (
+    analyze_growth,
+    fit_exponential,
+    fit_linear,
+    fit_logistic,
+    fit_power_law,
+)
 from ._types import (
     BootstrapIntervals,
     Diagnostics,
@@ -33,6 +39,7 @@ __all__ = [
     "fit_exponential",
     "fit_linear",
     "fit_logistic",
+    "fit_power_law",
 ]
 
 __version__ = "0.1.0"

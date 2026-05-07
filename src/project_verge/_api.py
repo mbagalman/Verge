@@ -10,6 +10,7 @@ from ._fit import (
     fit_exponential_model,
     fit_linear_model,
     fit_logistic_model,
+    fit_power_law_model,
     prepare_inputs,
 )
 from ._types import GrowthAnalysis, ModelFit, SignalAgreement
@@ -31,6 +32,11 @@ def fit_logistic(time, values, *, min_points: int = 8) -> ModelFit:
     return fit_logistic_model(normalized_time, normalized_values, min_points=min_points)
 
 
+def fit_power_law(time, values, *, min_points: int = 8) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+    return fit_power_law_model(normalized_time, normalized_values, min_points=min_points)
+
+
 def analyze_growth(
     time,
     values,
@@ -38,6 +44,7 @@ def analyze_growth(
     prior_exponential: float = 0.5,
     prior_linear: float = 0.5,
     prior_logistic: float = 0.5,
+    prior_power_law: float = 0.5,
     min_points: int = 8,
     min_fit_quality: float = 0.85,
     horizons: Optional[Sequence[float]] = None,
@@ -51,23 +58,26 @@ def analyze_growth(
     time_origin = float(np.asarray(time, dtype=float)[0])
     input_time_array = np.asarray(time, dtype=float)
     input_values_array = np.asarray(values, dtype=float)
-    _validate_priors(prior_exponential, prior_linear, prior_logistic)
+    _validate_priors(prior_exponential, prior_linear, prior_logistic, prior_power_law)
     _validate_fit_quality(min_fit_quality)
 
     exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
     linear_fit = fit_linear_model(normalized_time, normalized_values, min_points=min_points)
     logistic_fit = fit_logistic_model(normalized_time, normalized_values, min_points=min_points)
+    power_law_fit = fit_power_law_model(normalized_time, normalized_values, min_points=min_points)
 
     weights_by_name = _posterior_model_weights(
         {
             "exponential": (exponential_fit, prior_exponential),
             "linear": (linear_fit, prior_linear),
             "logistic": (logistic_fit, prior_logistic),
+            "power_law": (power_law_fit, prior_power_law),
         }
     )
     p_exponential = weights_by_name["exponential"]
     p_linear = weights_by_name["linear"]
     p_logistic = weights_by_name["logistic"]
+    p_power_law = weights_by_name["power_law"]
 
     diagnostics = build_diagnostics(
         normalized_time,
@@ -83,15 +93,19 @@ def analyze_growth(
         exponential_fit.log_r_squared < min_fit_quality
         and linear_fit.log_r_squared < min_fit_quality
         and logistic_fit.log_r_squared < min_fit_quality
+        and power_law_fit.log_r_squared < min_fit_quality
     )
     logistic_poorly_identified = len(diagnostics.identifiability_warnings) > 0
 
-    # Reason precedence: an absolute fit-quality failure dominates relative
-    # model comparison, which in turn dominates a logistic-only identifiability
-    # caveat, which in turn dominates a multi-signal disagreement. Only one
-    # reason is reported even when several apply.
+    # Reason precedence: an absolute fit-quality failure dominates everything;
+    # a winning power-law shape (which has no clean verdict in v1) dominates
+    # the relative ambiguity check; the logistic-only identifiability and
+    # signal-disagreement gates apply only when a non-power-law model leads.
+    # Only one reason is reported even when several apply.
     if all_fits_poor:
         indeterminate_reason: Optional[str] = "neither_model_fits"
+    elif leading_model == "power_law":
+        indeterminate_reason = "power_law_shape"
     elif winning_weight < 0.70:
         indeterminate_reason = "ambiguous_evidence"
     elif leading_model == "logistic" and logistic_poorly_identified:
@@ -131,6 +145,7 @@ def analyze_growth(
             prior_exponential=prior_exponential,
             prior_linear=prior_linear,
             prior_logistic=prior_logistic,
+            prior_power_law=prior_power_law,
             n_boot=n_boot,
             confidence=bootstrap_confidence,
             seed=bootstrap_seed,
@@ -143,12 +158,14 @@ def analyze_growth(
         p_exponential=float(p_exponential),
         p_linear=float(p_linear),
         p_logistic=float(p_logistic),
+        p_power_law=float(p_power_law),
         preferred_model=preferred_model,
         is_indeterminate=is_indeterminate,
         indeterminate_reason=indeterminate_reason,
         exponential_fit=exponential_fit,
         linear_fit=linear_fit,
         logistic_fit=logistic_fit,
+        power_law_fit=power_law_fit,
         diagnostics=diagnostics,
         assumptions=assumptions,
         logistic_intervals=logistic_intervals,

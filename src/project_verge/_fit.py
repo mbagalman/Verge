@@ -56,6 +56,19 @@ def linear_curve(time: np.ndarray, a: float, b: float) -> np.ndarray:
     return a + b * time
 
 
+def power_law_curve(time: np.ndarray, a: float, k: float) -> np.ndarray:
+    """Evaluate ``y = a * (t + 1)**k`` in normalized time.
+
+    The ``+1`` shift matches what :func:`fit_power_law_model` uses, so
+    ``log(t)`` stays finite at the normalized origin ``t = 0``. Power-law
+    is a diagnostic-only candidate in v1; this curve helper exists for
+    completeness (and for any future plot or prediction usage) but is not
+    consulted by :meth:`GrowthAnalysis.predict` because power-law never
+    becomes the preferred verdict.
+    """
+    return a * np.power(time + 1.0, k)
+
+
 def fit_exponential_model(
     time: np.ndarray,
     values: np.ndarray,
@@ -107,6 +120,59 @@ def fit_linear_model(
         initial_guess=_initial_guess_linear(time, values),
         bounds=_bounds_linear(time, values),
         min_points=min_points,
+    )
+
+
+def fit_power_law_model(
+    time: np.ndarray,
+    values: np.ndarray,
+    *,
+    min_points: int,
+) -> ModelFit:
+    """Fit ``y = a * (t + 1)**k`` via OLS in log-log space.
+
+    A diagnostic-only candidate. The ``+1`` shift on time keeps ``log(t)``
+    finite at ``t = 0`` after the package's standard time-origin
+    normalization. Verge does not use power-law for prediction or for the
+    headline verdict; it competes on BIC only so that polynomial /
+    power-law growth has somewhere honest to land instead of silently
+    misclassifying as logistic.
+    """
+    if len(time) < min_points:
+        raise ValueError(
+            f"power-law fitting requires at least {min_points} points"
+        )
+
+    n = len(values)
+    log_y = np.log(values)
+    log_t = np.log(time + 1.0)
+
+    design = np.column_stack([np.ones(n), log_t])
+    coeffs, *_ = np.linalg.lstsq(design, log_y, rcond=None)
+    log_a = float(coeffs[0])
+    k = float(coeffs[1])
+    a = float(np.exp(log_a))
+
+    fitted_log_y = log_a + k * log_t
+    fitted_values = np.clip(np.exp(fitted_log_y), _TINY, None)
+    rss = float(np.sum((log_y - fitted_log_y) ** 2))
+    sigma2 = max(rss / n, 1e-12)
+    log_likelihood = -0.5 * n * (np.log(2.0 * np.pi * sigma2) + 1.0)
+    # Two curve parameters plus the shared observation-noise scale, matching
+    # the BIC bookkeeping used by the other model fits.
+    parameter_count = 2 + 1
+    bic = parameter_count * np.log(n) - 2.0 * log_likelihood
+    log_r_squared = _log_space_r_squared(values, rss)
+
+    return ModelFit(
+        model_name="power_law",
+        parameters={"a": a, "k": k},
+        fitted_values=fitted_values,
+        log_likelihood=float(log_likelihood),
+        bic=float(bic),
+        log_r_squared=float(log_r_squared),
+        converged=True,
+        warnings=(),
     )
 
 
