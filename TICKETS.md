@@ -31,6 +31,8 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | **done** (`3b4d7f8`) |
 | T-10 | Failure-modes section in README | P1 | D | S | T-01 | **done** (`c9c528f`) |
 | T-11 | Real-data example (UN population) | P1 | D | S | — | open |
+| T-27 | Power-law shape detection (catches polynomial misclassification) | P1 | M | M | T-01 | open |
+| T-28 | Auto-downgrade verdict on wide weight CI (catches random-walk fragility) | P1 | M+C | S | T-07 | open |
 | T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | open |
 | T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — | open |
 | T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — | open |
@@ -261,6 +263,46 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 
 ---
 
+### T-27: Power-law shape detection (catches polynomial misclassification)
+**Category:** Methodology · **Effort:** M · **Depends on:** T-01
+
+**Problem.** Surfaced by writing the [README's "Failure modes / Polynomial or power-law growth"](README.md) section in T-10. At the default `min_fit_quality=0.85`, polynomial growth (`y = t**3`, etc.) silently classifies as `leveling off`: the logistic fit clears the floor at log-space R² ≈ 0.96 because `log(t**k)` is concave-down on linear `t` — the same shape signature that logistic late-stage data has. Power-law shapes have nowhere honest to land in v1's three-model space, so the library misclassifies confidently. The current mitigation (lift `min_fit_quality=0.99`) works but pushes calibration onto every user.
+
+**Proposal.** Add a power-law fit (linear regression of `log(y)` against `log(t - time_origin + ε)`, recovering `y = a * (t - origin)**k`) as a fourth diagnostic-only candidate. Compete it on BIC alongside exponential / linear / logistic. If power-law wins decisively, force `indeterminate` with new reason `"power_law_shape"`; do **not** extend the four-way verdict surface, because the user's question ("is this leveling off, or going up?") doesn't have a clean answer for power-law growth and forcing one into "accelerating" or "steady" would mis-translate.
+
+**Acceptance criteria.**
+- New `fit_power_law_model` with documented model form, fit in log-log space
+- Power-law BIC weight included in `_posterior_model_weights` competition (now four-way)
+- New `indeterminate_reason = "power_law_shape"` with precedence between `neither_model_fits` and `ambiguous_evidence`
+- Plain-language note added to `_summary.py`
+- Test: cubic and square-root series → indeterminate with `"power_law_shape"` at the *default* `min_fit_quality`
+- Test: clean logistic / exponential / linear → still classify decisively (power-law does not steal weight)
+- README "Failure modes / Polynomial" mitigation rewritten — no manual threshold tuning needed
+
+**Files.** [_fit.py](src/project_verge/_fit.py), [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), [_summary.py](src/project_verge/_summary.py), tests, [README.md](README.md)
+
+---
+
+### T-28: Auto-downgrade verdict to indeterminate when weight CI is too wide
+**Category:** Methodology + Code · **Effort:** S · **Depends on:** T-07
+
+**Problem.** Surfaced by writing the [README's "Failure modes / Random-walk-like or unstructured series"](README.md) section in T-10. Random-walk-like data (nondecreasing cumulative noise) produces a confident-looking verdict line — `Verdict: leveling off (logistic, 0.78 confidence; 90% CI [0.35, 1.00])`. T-07's weight CI is wide, signaling fragility, but the headline still reads "0.78 confidence." A user not paying close attention to the CI suffix can be misled by the headline. The CI is the load-bearing honesty signal but it is too easy to skip past.
+
+**Proposal.** Add a new indeterminate gate that fires when the bootstrap weight CI on the winning model spans more than a configurable threshold (default ~0.40 — clean cases hit ≈ 0, noisy real-data ≈ 0.05–0.20, random walks ≈ 0.65). Maps to new `indeterminate_reason = "fragile_verdict"`. Place in the precedence chain after `signal_disagreement` (it is a fallback for cases that pass all earlier gates but still produce unstable verdicts under resampling).
+
+**Acceptance criteria.**
+- New parameter `max_weight_ci_width: float = 0.40` on `analyze_growth`, with input validation
+- New `indeterminate_reason` value `"fragile_verdict"` plus plain-language note in `_summary.py`
+- Gate is **skipped** when `weight_intervals is None` (bootstrap didn't run, no signal to act on)
+- Default threshold chosen via empirical calibration: clean cases must not be flagged, random walks must be flagged
+- Test: seeded random-walk synthetic series → indeterminate with `"fragile_verdict"`
+- Test: clean logistic / linear / exponential → not flagged
+- README "Failure modes / Random-walk-like" rewritten — the gate is now automatic; users no longer need to read the CI suffix to catch this
+
+**Files.** [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), [_summary.py](src/project_verge/_summary.py), tests, [README.md](README.md)
+
+---
+
 ## P2 — Robustness and quality
 
 ### T-12: AICc instead of (or alongside) BIC
@@ -465,6 +507,6 @@ Standard Keep-a-Changelog format. Pre-populate with the v0.1.0 entry once that s
 ## Suggested release groupings
 
 - **v0.1.0 — "Honest shape"**: T-01, T-02, T-03, T-04, T-26
-- **v0.2.0 — "Real question"**: T-05, T-06, T-07, T-08, T-09, T-10, T-11
+- **v0.2.0 — "Real question"**: T-05, T-06, T-07, T-08, T-09, T-10, T-11, T-27, T-28
 - **v0.3.0 — "Robustness"**: T-12, T-13, T-14, T-15, T-16, T-17, T-18, T-19
 - **Polish (any time)**: T-20, T-21, T-22, T-23, T-24, T-25
