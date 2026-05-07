@@ -115,6 +115,27 @@ result.predict([13.0, 15.0, 20.0])  # list of Prediction, one per horizon
 
 For an indeterminate verdict `predict()` raises `ValueError` — the indeterminate branch exists precisely because no model is reliable enough to predict from. Inspect `result.exponential_fit`, `result.linear_fit`, or `result.logistic_fit` directly if you want a prediction from a specific candidate.
 
+## Visualizing the result
+
+Install the optional plotting extra:
+
+```bash
+pip install 'project-verge[plot]'
+```
+
+Then `plot_growth_analysis(result)` produces a single-figure summary — data, all three fitted curves (the preferred model bold, the others as faint dashed lines for comparison), the carrying-capacity asymptote `K` when logistic is preferred, a 90% bootstrap prediction envelope when uncertainty data is available, and a title that mirrors the verdict line.
+
+```python
+import matplotlib.pyplot as plt
+from project_verge.plot import plot_growth_analysis
+
+ax = plot_growth_analysis(result)
+plt.tight_layout()
+plt.show()
+```
+
+Pass an existing `ax` to compose with other axes; pass `extrapolate_fraction=0` to plot only the observed range; pass `envelope=False` to suppress the envelope (or `envelope=True` to force a fresh bootstrap when none is cached on the result). A runnable example lives at [examples/demo_plot.py](examples/demo_plot.py).
+
 ## API
 
 ### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, min_points=8, min_fit_quality=0.85, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
