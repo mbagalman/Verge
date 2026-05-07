@@ -18,41 +18,41 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 
 ## Summary
 
-| ID | Title | Priority | Category | Effort | Depends on |
-|----|-------|----------|----------|--------|------------|
-| T-01 | Add a "neither model fits" exit | P0 | M+C | M | — |
-| T-02 | Bootstrap CI on K, t0, and predicted value | P0 | M+C | M | — |
-| T-03 | `GrowthAnalysis.summary()` with human-readable verdict | P0 | C | S | T-02 (soft) |
-| T-04 | Reframe README around the real question + show indeterminate case | P0 | D | S | T-03 |
-| T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 |
-| T-06 | Wire diagnostics (slope sig., curvature sig., forecast MAE) into verdict | P1 | M+C | M | — |
-| T-07 | Bootstrap CI on the model weights themselves | P1 | M+C | S | T-02 |
-| T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 |
-| T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) |
-| T-10 | Failure-modes section in README | P1 | D | S | T-01 |
-| T-11 | Real-data example (UN population) | P1 | D | S | — |
-| T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — |
-| T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — |
-| T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — |
-| T-15 | Smoothing / noise-tolerance path for non-monotone data | P2 | M+C | M | — |
-| T-16 | Multi-start optimization for the logistic fit | P2 | C | S | — |
-| T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) |
-| T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — |
-| T-19 | Calibration evidence in docs | P2 | D | M | T-17 |
-| T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — |
-| T-21 | `npt.ArrayLike` type hints | P3 | C | S | — |
-| T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — |
-| T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 |
-| T-24 | Glossary in docs | P3 | D | S | — |
-| T-25 | `CHANGELOG.md` | P3 | D | S | — |
-| T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — |
+| ID | Title | Priority | Category | Effort | Depends on | Status |
+|----|-------|----------|----------|--------|------------|--------|
+| T-01 | Add a "neither model fits" exit | P0 | M+C | M | — | **done** (`a99d601`) |
+| T-02 | Bootstrap CI on K, t0, and predicted value | P0 | M+C | M | — | open |
+| T-03 | `GrowthAnalysis.summary()` with human-readable verdict | P0 | C | S | T-02 (soft) | open |
+| T-04 | Reframe README around the real question + show indeterminate case | P0 | D | S | T-03 | open |
+| T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 | open |
+| T-06 | Wire diagnostics (slope sig., curvature sig., forecast MAE) into verdict | P1 | M+C | M | — | open |
+| T-07 | Bootstrap CI on the model weights themselves | P1 | M+C | S | T-02 | open |
+| T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 | open |
+| T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | open |
+| T-10 | Failure-modes section in README | P1 | D | S | T-01 | open |
+| T-11 | Real-data example (UN population) | P1 | D | S | — | open |
+| T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | open |
+| T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — | open |
+| T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — | open |
+| T-15 | Smoothing / noise-tolerance path for non-monotone data | P2 | M+C | M | — | open |
+| T-16 | Multi-start optimization for the logistic fit | P2 | C | S | — | open |
+| T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) | open |
+| T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — | open |
+| T-19 | Calibration evidence in docs | P2 | D | M | T-17 | open |
+| T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | open |
+| T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | open |
+| T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | open |
+| T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | open |
+| T-24 | Glossary in docs | P3 | D | S | — | open |
+| T-25 | `CHANGELOG.md` | P3 | D | S | — | open |
+| T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — | open |
 
 ---
 
 ## P0 — Required before v0.1.0
 
 ### T-01: Add a "neither model fits" exit
-**Category:** Methodology + Code · **Effort:** M
+**Category:** Methodology + Code · **Effort:** M · **Status:** Done in commit `a99d601`
 
 **Problem.** [_api.py:88-101](src/project_verge/_api.py#L88-L101) normalizes BIC weights to sum to 1.0 even when both fits are terrible. A polynomial, linear, or power-law input still produces a confident-looking exponential-vs-logistic verdict.
 
