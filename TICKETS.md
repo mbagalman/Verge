@@ -28,7 +28,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-06 | Wire diagnostics (slope sig., curvature sig., forecast MAE) into verdict | P1 | M+C | M | — | **done** (`f0d76df`) |
 | T-07 | Bootstrap CI on the model weights themselves | P1 | M+C | S | T-02 | **done** (`6271730`) |
 | T-08 | `GrowthAnalysis.predict(time, *, ci=0.9)` | P1 | C | S | T-02 | **done** (`ea50a77`) |
-| T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | open |
+| T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | **done** (`3b4d7f8`) |
 | T-10 | Failure-modes section in README | P1 | D | S | T-01 | open |
 | T-11 | Real-data example (UN population) | P1 | D | S | — | open |
 | T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | open |
@@ -203,7 +203,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-09: `plot_growth_analysis()` helper
-**Category:** Code + Docs · **Effort:** S · **Depends on:** T-02 (soft — for envelope)
+**Category:** Code + Docs · **Effort:** S · **Depends on:** T-02 (soft — for envelope) · **Status:** Done in commit `3b4d7f8`
 
 **Problem.** First thing any user wants is to see fits overlaid on data.
 
