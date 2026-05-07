@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth, fit_exponential, fit_logistic
+from project_verge import analyze_growth, fit_exponential, fit_linear, fit_logistic
 
 
 def _exp_series(a=2.5, r=0.18, n=14, start=0.0, stop=10.0):
@@ -35,6 +35,16 @@ def test_fit_logistic_recovers_parameters_on_clean_data():
     assert fit.parameters["t0"] == pytest.approx(5.0, rel=5e-2)
 
 
+def test_fit_linear_recovers_parameters_on_clean_data():
+    time = np.linspace(0.0, 10.0, 16)
+    values = 5.0 + 2.0 * time
+    fit = fit_linear(time, values)
+
+    assert fit.converged
+    assert fit.parameters["a"] == pytest.approx(5.0, rel=1e-2)
+    assert fit.parameters["b"] == pytest.approx(2.0, rel=1e-2)
+
+
 def test_analyze_growth_prefers_exponential_for_clear_exponential_series():
     time, values = _exp_series(a=4.0, r=0.16, n=15)
     result = analyze_growth(time, values)
@@ -53,6 +63,17 @@ def test_analyze_growth_prefers_logistic_for_clear_logistic_series():
     assert result.p_logistic > 0.80
     assert result.p_exponential < 0.20
     assert result.preferred_model == "logistic"
+    assert not result.is_indeterminate
+    assert result.indeterminate_reason is None
+
+
+def test_analyze_growth_prefers_linear_for_clean_linear_series():
+    time = np.linspace(0.0, 10.0, 16)
+    values = 5.0 + 2.0 * time
+    result = analyze_growth(time, values)
+
+    assert result.p_linear > 0.80
+    assert result.preferred_model == "linear"
     assert not result.is_indeterminate
     assert result.indeterminate_reason is None
 

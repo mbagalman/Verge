@@ -10,7 +10,8 @@ if TYPE_CHECKING:
 
 
 _VERDICT_LABEL = {
-    "exponential": "still growing",
+    "exponential": "accelerating",
+    "linear": "steady",
     "logistic": "leveling off",
     "indeterminate": "indeterminate",
 }
@@ -60,9 +61,11 @@ def _format_verdict_line(result: "GrowthAnalysis") -> str:
     if result.is_indeterminate:
         reason = result.indeterminate_reason or "unspecified"
         return f"Verdict: {label} (reason: {reason})."
-    confidence = (
-        result.p_logistic if result.preferred_model == "logistic" else result.p_exponential
-    )
+    confidence = {
+        "exponential": result.p_exponential,
+        "linear": result.p_linear,
+        "logistic": result.p_logistic,
+    }.get(result.preferred_model, 0.0)
     return f"Verdict: {label} ({result.preferred_model}, {confidence:.2f} confidence)."
 
 
@@ -84,18 +87,20 @@ def _format_diagnostic_line(result: "GrowthAnalysis") -> str:
     diag = result.diagnostics
     parts = [f"Per-capita slope: {diag.per_capita_slope:+.4g}"]
 
-    if result.preferred_model == "logistic":
-        mae = diag.forecast_mae_logistic
-        if math.isfinite(mae):
-            parts.append(f"forecast log-MAE (logistic): {mae:.3g}")
-    elif result.preferred_model == "exponential":
-        mae = diag.forecast_mae_exponential
-        if math.isfinite(mae):
-            parts.append(f"forecast log-MAE (exponential): {mae:.3g}")
-    else:
+    mae_by_model = {
+        "exponential": diag.forecast_mae_exponential,
+        "linear": diag.forecast_mae_linear,
+        "logistic": diag.forecast_mae_logistic,
+    }
+    mae = mae_by_model.get(result.preferred_model)
+    if mae is not None and math.isfinite(mae):
+        parts.append(f"forecast log-MAE ({result.preferred_model}): {mae:.3g}")
+    elif result.is_indeterminate:
         parts.append(
             "posterior weights: "
-            f"exponential {result.p_exponential:.2f}, logistic {result.p_logistic:.2f}"
+            f"exponential {result.p_exponential:.2f}, "
+            f"linear {result.p_linear:.2f}, "
+            f"logistic {result.p_logistic:.2f}"
         )
 
     return "; ".join(parts) + "."

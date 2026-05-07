@@ -7,7 +7,9 @@ import numpy as np
 from ._fit import (
     exponential_curve,
     fit_exponential_model,
+    fit_linear_model,
     fit_logistic_model,
+    linear_curve,
     logistic_curve,
 )
 from ._types import Diagnostics, ModelFit
@@ -18,11 +20,13 @@ def build_diagnostics(
     values: np.ndarray,
     *,
     exponential_fit: ModelFit,
+    linear_fit: ModelFit,
     logistic_fit: ModelFit,
 ) -> Diagnostics:
     per_capita_intercept, per_capita_slope = _per_capita_regression(time, values)
     residual_curvature_score = _residual_curvature_score(time, values)
     exp_forecast_mae = _forward_chaining_mae(time, values, fit_exponential_model, min_train=5)
+    lin_forecast_mae = _forward_chaining_mae(time, values, fit_linear_model, min_train=5)
     log_forecast_mae = _forward_chaining_mae(time, values, fit_logistic_model, min_train=6)
     identifiability_warnings = _logistic_identifiability_warnings(time, values, logistic_fit)
 
@@ -31,6 +35,7 @@ def build_diagnostics(
         per_capita_intercept=float(per_capita_intercept),
         residual_curvature_score=float(residual_curvature_score),
         forecast_mae_exponential=float(exp_forecast_mae),
+        forecast_mae_linear=float(lin_forecast_mae),
         forecast_mae_logistic=float(log_forecast_mae),
         fit_warnings=logistic_fit.warnings,
         identifiability_warnings=identifiability_warnings,
@@ -78,6 +83,8 @@ def _forward_chaining_mae(
         future_time = np.array([time[split_index]])
         if fit.model_name == "exponential":
             prediction = exponential_curve(future_time, fit.parameters["a"], fit.parameters["r"])
+        elif fit.model_name == "linear":
+            prediction = linear_curve(future_time, fit.parameters["a"], fit.parameters["b"])
         else:
             prediction = logistic_curve(
                 future_time,

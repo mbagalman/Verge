@@ -33,6 +33,7 @@ class Diagnostics:
     per_capita_intercept: float
     residual_curvature_score: float
     forecast_mae_exponential: float
+    forecast_mae_linear: float
     forecast_mae_logistic: float
     fit_warnings: Tuple[str, ...] = ()
     identifiability_warnings: Tuple[str, ...] = ()
@@ -73,11 +74,13 @@ class GrowthAnalysis:
     """End-to-end result returned by :func:`analyze_growth`."""
 
     p_exponential: float
+    p_linear: float
     p_logistic: float
     preferred_model: str
     is_indeterminate: bool
     indeterminate_reason: Optional[str]
     exponential_fit: ModelFit
+    linear_fit: ModelFit
     logistic_fit: ModelFit
     diagnostics: Diagnostics
     assumptions: Tuple[str, ...]

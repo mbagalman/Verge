@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence
 
 import numpy as np
 
 from ._diagnostics import build_diagnostics
-from ._fit import fit_exponential_model, fit_logistic_model, prepare_inputs
+from ._fit import (
+    fit_exponential_model,
+    fit_linear_model,
+    fit_logistic_model,
+    prepare_inputs,
+)
 from ._types import GrowthAnalysis, ModelFit
 from ._uncertainty import bootstrap_logistic_intervals
 
@@ -14,6 +19,11 @@ from ._uncertainty import bootstrap_logistic_intervals
 def fit_exponential(time, values, *, min_points: int = 8) -> ModelFit:
     normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
     return fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
+
+
+def fit_linear(time, values, *, min_points: int = 8) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+    return fit_linear_model(normalized_time, normalized_values, min_points=min_points)
 
 
 def fit_logistic(time, values, *, min_points: int = 8) -> ModelFit:
@@ -26,6 +36,7 @@ def analyze_growth(
     values,
     *,
     prior_exponential: float = 0.5,
+    prior_linear: float = 0.5,
     prior_logistic: float = 0.5,
     min_points: int = 8,
     min_fit_quality: float = 0.85,
@@ -35,30 +46,37 @@ def analyze_growth(
     bootstrap_seed: Optional[int] = None,
 ) -> GrowthAnalysis:
     normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
-    _validate_priors(prior_exponential, prior_logistic)
+    _validate_priors(prior_exponential, prior_linear, prior_logistic)
     _validate_fit_quality(min_fit_quality)
 
     exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
+    linear_fit = fit_linear_model(normalized_time, normalized_values, min_points=min_points)
     logistic_fit = fit_logistic_model(normalized_time, normalized_values, min_points=min_points)
 
-    p_exponential, p_logistic = _posterior_model_weights(
-        exponential_fit,
-        logistic_fit,
-        prior_exponential=prior_exponential,
-        prior_logistic=prior_logistic,
+    weights_by_name = _posterior_model_weights(
+        {
+            "exponential": (exponential_fit, prior_exponential),
+            "linear": (linear_fit, prior_linear),
+            "logistic": (logistic_fit, prior_logistic),
+        }
     )
+    p_exponential = weights_by_name["exponential"]
+    p_linear = weights_by_name["linear"]
+    p_logistic = weights_by_name["logistic"]
 
     diagnostics = build_diagnostics(
         normalized_time,
         normalized_values,
         exponential_fit=exponential_fit,
+        linear_fit=linear_fit,
         logistic_fit=logistic_fit,
     )
 
-    leading_model = "exponential" if p_exponential >= p_logistic else "logistic"
-    winning_weight = max(p_exponential, p_logistic)
-    both_fits_poor = (
+    leading_model = max(weights_by_name, key=weights_by_name.__getitem__)
+    winning_weight = weights_by_name[leading_model]
+    all_fits_poor = (
         exponential_fit.log_r_squared < min_fit_quality
+        and linear_fit.log_r_squared < min_fit_quality
         and logistic_fit.log_r_squared < min_fit_quality
     )
     logistic_poorly_identified = len(diagnostics.identifiability_warnings) > 0
@@ -66,7 +84,7 @@ def analyze_growth(
     # Reason precedence: an absolute fit-quality failure dominates relative
     # model comparison, which in turn dominates a logistic-only identifiability
     # caveat. Only one reason is reported even when several apply.
-    if both_fits_poor:
+    if all_fits_poor:
         indeterminate_reason: Optional[str] = "neither_model_fits"
     elif winning_weight < 0.70:
         indeterminate_reason = "ambiguous_evidence"
@@ -104,11 +122,13 @@ def analyze_growth(
 
     return GrowthAnalysis(
         p_exponential=float(p_exponential),
+        p_linear=float(p_linear),
         p_logistic=float(p_logistic),
         preferred_model=preferred_model,
         is_indeterminate=is_indeterminate,
         indeterminate_reason=indeterminate_reason,
         exponential_fit=exponential_fit,
+        linear_fit=linear_fit,
         logistic_fit=logistic_fit,
         diagnostics=diagnostics,
         assumptions=assumptions,
@@ -117,33 +137,38 @@ def analyze_growth(
 
 
 def _posterior_model_weights(
-    exponential_fit: ModelFit,
-    logistic_fit: ModelFit,
-    *,
-    prior_exponential: float,
-    prior_logistic: float,
-) -> Tuple[float, float]:
-    bics = np.array([exponential_fit.bic, logistic_fit.bic], dtype=float)
-    priors = np.array([prior_exponential, prior_logistic], dtype=float)
+    fits_with_priors: dict,
+) -> dict:
+    """Normalize BIC-derived posterior weights across an arbitrary set of models.
+
+    ``fits_with_priors`` is a mapping ``name -> (ModelFit, prior)``. Returns a
+    mapping of the same names to normalized posterior weights summing to 1.
+    Models whose BIC is non-finite (e.g. fit failures) receive zero weight.
+    """
+
+    names = list(fits_with_priors.keys())
+    bics = np.array([fits_with_priors[name][0].bic for name in names], dtype=float)
+    priors = np.array([fits_with_priors[name][1] for name in names], dtype=float)
 
     finite_mask = np.isfinite(bics)
     if not np.any(finite_mask):
-        raise RuntimeError("Neither model produced a valid fit.")
+        raise RuntimeError("None of the candidate models produced a valid fit.")
 
     min_bic = np.min(bics[finite_mask])
-    log_weights = np.full(2, -np.inf, dtype=float)
+    log_weights = np.full(len(names), -np.inf, dtype=float)
     log_weights[finite_mask] = np.log(priors[finite_mask]) - 0.5 * (bics[finite_mask] - min_bic)
     normalization = np.logaddexp.reduce(log_weights[finite_mask])
-    probabilities = np.zeros(2, dtype=float)
+    probabilities = np.zeros(len(names), dtype=float)
     probabilities[finite_mask] = np.exp(log_weights[finite_mask] - normalization)
-    return float(probabilities[0]), float(probabilities[1])
+    return {name: float(p) for name, p in zip(names, probabilities)}
 
 
-def _validate_priors(prior_exponential: float, prior_logistic: float) -> None:
-    if not math.isfinite(prior_exponential) or not math.isfinite(prior_logistic):
-        raise ValueError("model priors must be finite")
-    if prior_exponential <= 0.0 or prior_logistic <= 0.0:
-        raise ValueError("model priors must be strictly positive")
+def _validate_priors(*priors: float) -> None:
+    for prior in priors:
+        if not math.isfinite(prior):
+            raise ValueError("model priors must be finite")
+        if prior <= 0.0:
+            raise ValueError("model priors must be strictly positive")
 
 
 def _validate_fit_quality(min_fit_quality: float) -> None:

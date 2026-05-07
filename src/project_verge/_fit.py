@@ -52,6 +52,10 @@ def logistic_curve(time: np.ndarray, k: float, r: float, t0: float) -> np.ndarra
     return k * expit(r * (time - t0))
 
 
+def linear_curve(time: np.ndarray, a: float, b: float) -> np.ndarray:
+    return a + b * time
+
+
 def fit_exponential_model(
     time: np.ndarray,
     values: np.ndarray,
@@ -84,6 +88,24 @@ def fit_logistic_model(
         model_func=lambda t, p: logistic_curve(t, p[0], p[1], p[2]),
         initial_guess=_initial_guess_logistic(time, values),
         bounds=_bounds_logistic(time, values),
+        min_points=min_points,
+    )
+
+
+def fit_linear_model(
+    time: np.ndarray,
+    values: np.ndarray,
+    *,
+    min_points: int,
+) -> ModelFit:
+    return _fit_model(
+        time,
+        values,
+        model_name="linear",
+        parameter_names=("a", "b"),
+        model_func=lambda t, p: linear_curve(t, p[0], p[1]),
+        initial_guess=_initial_guess_linear(time, values),
+        bounds=_bounds_linear(time, values),
         min_points=min_points,
     )
 
@@ -196,4 +218,22 @@ def _bounds_logistic(time: np.ndarray, values: np.ndarray) -> Tuple[np.ndarray, 
     # K is the logistic ceiling, so it must remain just above the observed maximum.
     lower = np.array([max_value * (1.0 + 1e-6), 1e-12, time[0] - 4.0 * span], dtype=float)
     upper = np.array([max_value * 1e4, max(10.0, 25.0 / span), time[-1] + 4.0 * span], dtype=float)
+    return lower, upper
+
+
+def _initial_guess_linear(time: np.ndarray, values: np.ndarray) -> np.ndarray:
+    span = max(float(time[-1] - time[0]), 1.0)
+    slope = max((float(values[-1]) - float(values[0])) / span, 0.0)
+    intercept = max(float(values[0]), 1e-6)
+    return np.array([intercept, slope], dtype=float)
+
+
+def _bounds_linear(time: np.ndarray, values: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    span = max(float(time[-1] - time[0]), 1.0)
+    max_value = max(float(np.max(values)), 1.0)
+    # The intercept lives in y-units and must be positive so log(a + b*t) stays
+    # finite under the shared log-normal observation model. The slope is
+    # nonnegative because the v1 input contract is nondecreasing.
+    lower = np.array([1e-12, 0.0], dtype=float)
+    upper = np.array([max_value * 1e4, max_value * 1e4 / span], dtype=float)
     return lower, upper

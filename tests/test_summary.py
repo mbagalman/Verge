@@ -15,17 +15,31 @@ def _logistic_series(k=120.0, r=0.7, t0=6.0, n=18, start=0.0, stop=12.0):
     return time, values
 
 
-def test_summary_for_clear_exponential_says_still_growing():
+def test_summary_for_clear_exponential_says_accelerating():
     time, values = _exp_series(a=4.0, r=0.16, n=15)
 
     result = analyze_growth(time, values, n_boot=0)
     summary = result.summary()
 
     assert summary.startswith("Verdict:")
-    assert "still growing" in summary
+    assert "accelerating" in summary
     assert "exponential" in summary
     assert "Estimated ceiling" not in summary
     assert "Per-capita slope" in summary
+
+
+def test_summary_for_clean_linear_says_steady():
+    time = np.linspace(0.0, 10.0, 16)
+    values = 5.0 + 2.0 * time
+
+    result = analyze_growth(time, values, n_boot=0)
+    summary = result.summary()
+
+    assert summary.startswith("Verdict:")
+    assert "steady" in summary
+    assert "linear" in summary
+    assert "Estimated ceiling" not in summary
+    assert "forecast log-MAE (linear)" in summary
 
 
 def test_summary_for_clear_logistic_includes_K_and_inflection_intervals():
