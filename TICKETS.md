@@ -21,7 +21,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | ID | Title | Priority | Category | Effort | Depends on | Status |
 |----|-------|----------|----------|--------|------------|--------|
 | T-01 | Add a "neither model fits" exit | P0 | M+C | M | — | **done** (`a99d601`) |
-| T-02 | Bootstrap CI on K, t0, and predicted value | P0 | M+C | M | — | **done** (next commit) |
+| T-02 | Bootstrap CI on K, t0, and predicted value | P0 | M+C | M | — | **done** (`eb37fe1`) |
 | T-03 | `GrowthAnalysis.summary()` with human-readable verdict | P0 | C | S | T-02 (soft) | open |
 | T-04 | Reframe README around the real question + show indeterminate case | P0 | D | S | T-03 | open |
 | T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 | open |
@@ -71,7 +71,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-02: Bootstrap CI on K, t0, and predicted value
-**Category:** Methodology + Code · **Effort:** M · **Status:** Done in next commit
+**Category:** Methodology + Code · **Effort:** M · **Status:** Done in commit `eb37fe1`
 
 **Problem.** When logistic wins, [_diagnostics.py:97-123](src/project_verge/_diagnostics.py#L97-L123) only sanity-checks K's plausibility. The user's real question — *how soon* and *where* will it level off? — needs uncertainty intervals.
 
