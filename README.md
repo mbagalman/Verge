@@ -172,6 +172,68 @@ Version 1 assumes:
 - `values` is nondecreasing
 - at least 8 observations are provided for `analyze_growth`
 
+## Failure modes
+
+Verge's input contract is intentionally narrow and its candidate model space is small. When inputs sit outside what v1 supports, the failure shows up in one of three ways: a `ValueError` from input validation, an `indeterminate` verdict with a structured `indeterminate_reason`, or — in a few cases worth being honest about — a confident-looking verdict on data the library cannot actually distinguish. This section catalogs the patterns most worth watching for.
+
+### Polynomial or power-law growth
+
+**Signature.** Series shaped like `y ∝ t^k` for some `k > 0` — cubic, square-root, anything that is not pure exponential, linear, or sigmoid.
+
+**Library response.** At the default `min_fit_quality=0.85`, a cubic series like `y = t**3` quietly classifies as `leveling off` with high BIC weight on logistic. The logistic curve has enough flexibility to fit polynomial growth on the log scale to R² ≈ 0.96, which clears the default quality floor.
+
+**Mitigation.** Raise the threshold when polynomial growth is plausible: `analyze_growth(time, values, min_fit_quality=0.99)`. With the strict floor the same cubic returns `indeterminate (reason: neither_model_fits)`. The trade-off is that mildly imperfect *correct* exponential or logistic data may also be flagged as "neither fits"; calibrate to the noise level you expect in your domain.
+
+### Step change or regime shift
+
+**Signature.** A series with one or more abrupt changes — for example, flat for half the window followed by exponential growth.
+
+**Library response.** Triggers `indeterminate (reason: neither_model_fits)` even at the default threshold, because none of the three candidates can capture the discontinuity: log-space R² lands around 0.55–0.77 for all of them.
+
+**Mitigation.** None within v1. Subset the data to a single regime and re-analyze, or wait for change-point support.
+
+### Very short series (`n < 8`)
+
+**Signature.** Fewer than 8 observations.
+
+**Library response.** Hard `ValueError("at least 8 observations are required")` from input validation.
+
+**Mitigation.** Wait for more data, or pass `min_points=N` with a smaller `N` if you accept that statistical signals weaken below 8 points — the diagnostics t-tests have very low df and the bootstrap CIs become uninformative.
+
+### Heavy noise that breaks monotonicity
+
+**Signature.** Real-world noisy data where some adjacent observations have `y_{i+1} < y_i`.
+
+**Library response.** Hard `ValueError("values must be nondecreasing for the v1 API")` from input validation.
+
+**Mitigation.** Pre-smooth with a rolling median or LOWESS before passing to Verge. A built-in `allow_smoothing` option is on the backlog ([T-15](TICKETS.md)).
+
+### Non-positive values
+
+**Signature.** Any `y_i <= 0`.
+
+**Library response.** Hard `ValueError("values must be strictly positive")`. The shared log-normal observation model needs strictly positive `y`.
+
+**Mitigation.** Shift or clip the data so all values are positive, or transform the underlying problem so the quantity of interest is naturally positive.
+
+### Random-walk-like or unstructured series
+
+**Signature.** Data with no underlying growth model at all but happens to be nondecreasing — for example, `y = 1 + cumsum(|N(0, 1)|)` with `n = 20`.
+
+**Library response.** Often classifies as `leveling off` with apparent confidence, because cumulative-noise series happen to be concave on the log scale and the logistic fits them well by R². On a typical seed this gives `Verdict: leveling off (logistic, 0.78 confidence; 90% CI [0.35, 1.00])` — the **wide CI on the winning weight** is the honesty signal Verge gives back when the verdict is fragile.
+
+**Mitigation.** Always read the verdict-line CI from `weight_intervals` alongside the headline confidence. A wide weight CI (anything spanning more than ~0.3) means the verdict could swap under resampling and should not be treated as decisive. Cross-check with domain knowledge.
+
+### Already-saturated series
+
+**Signature.** All observations are at or near a plateau, with only minor early growth visible.
+
+**Library response.** Usually classifies as `leveling off` with high confidence — this is the **correct** answer, not a failure. `result.logistic_intervals.K` will sit just above the observed maximum.
+
+**Mitigation.** None needed; this is a working case. If the early growth phase is too brief to identify the bend, you may instead see `indeterminate (reason: logistic_unidentifiable)`, which means the data really is too uninformative to pin down where the plateau is.
+
+---
+
 ## Interpreting the Verdict
 
 The verdict is one of four categorical labels — `accelerating`, `steady`, `leveling off`, or `indeterminate` — chosen from the leading model when a model is clearly preferred *and* the underlying fit passes a quality floor *and* (for logistic) the curve is identified by the observed window. If any of those checks fails, the verdict is forced to `indeterminate` with a structured `indeterminate_reason`.
