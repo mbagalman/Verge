@@ -31,7 +31,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-09 | `plot_growth_analysis()` helper | P1 | C+D | S | T-02 (soft) | **done** (`3b4d7f8`) |
 | T-10 | Failure-modes section in README | P1 | D | S | T-01 | **done** (`c9c528f`) |
 | T-11 | Real-data example (UN population) | P1 | D | S | — | open |
-| T-27 | Power-law shape detection (catches polynomial misclassification) | P1 | M | M | T-01 | open |
+| T-27 | Power-law shape detection (catches polynomial misclassification) | P1 | M | M | T-01 | **done** (`9e63106`) |
 | T-28 | Auto-downgrade verdict on wide weight CI (catches random-walk fragility) | P1 | M+C | S | T-07 | open |
 | T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | open |
 | T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — | open |
@@ -264,7 +264,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-27: Power-law shape detection (catches polynomial misclassification)
-**Category:** Methodology · **Effort:** M · **Depends on:** T-01
+**Category:** Methodology · **Effort:** M · **Depends on:** T-01 · **Status:** Done in commit `9e63106`
 
 **Problem.** Surfaced by writing the [README's "Failure modes / Polynomial or power-law growth"](README.md) section in T-10. At the default `min_fit_quality=0.85`, polynomial growth (`y = t**3`, etc.) silently classifies as `leveling off`: the logistic fit clears the floor at log-space R² ≈ 0.96 because `log(t**k)` is concave-down on linear `t` — the same shape signature that logistic late-stage data has. Power-law shapes have nowhere honest to land in v1's three-model space, so the library misclassifies confidently. The current mitigation (lift `min_fit_quality=0.99`) works but pushes calibration onto every user.
 
