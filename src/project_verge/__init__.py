@@ -8,8 +8,9 @@ from ._types import (
     Interval,
     ModelFit,
     SignalAgreement,
+    WeightIntervals,
 )
-from ._uncertainty import bootstrap_logistic_intervals
+from ._uncertainty import bootstrap_logistic_intervals, bootstrap_model_weights
 
 __all__ = [
     "BootstrapIntervals",
@@ -18,8 +19,10 @@ __all__ = [
     "Interval",
     "ModelFit",
     "SignalAgreement",
+    "WeightIntervals",
     "analyze_growth",
     "bootstrap_logistic_intervals",
+    "bootstrap_model_weights",
     "fit_exponential",
     "fit_linear",
     "fit_logistic",

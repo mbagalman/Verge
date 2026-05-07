@@ -13,7 +13,7 @@ from ._fit import (
     prepare_inputs,
 )
 from ._types import GrowthAnalysis, ModelFit, SignalAgreement
-from ._uncertainty import bootstrap_logistic_intervals
+from ._uncertainty import bootstrap_logistic_intervals, bootstrap_model_weights
 
 
 def fit_exponential(time, values, *, min_points: int = 8) -> ModelFit:
@@ -120,8 +120,19 @@ def analyze_growth(
             confidence=bootstrap_confidence,
             seed=bootstrap_seed,
         )
+        weight_intervals = bootstrap_model_weights(
+            time,
+            values,
+            prior_exponential=prior_exponential,
+            prior_linear=prior_linear,
+            prior_logistic=prior_logistic,
+            n_boot=n_boot,
+            confidence=bootstrap_confidence,
+            seed=bootstrap_seed,
+        )
     else:
         logistic_intervals = None
+        weight_intervals = None
 
     return GrowthAnalysis(
         p_exponential=float(p_exponential),
@@ -136,6 +147,7 @@ def analyze_growth(
         diagnostics=diagnostics,
         assumptions=assumptions,
         logistic_intervals=logistic_intervals,
+        weight_intervals=weight_intervals,
     )
 
 

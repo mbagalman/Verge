@@ -5,8 +5,10 @@ import pytest
 
 from project_verge import (
     BootstrapIntervals,
+    WeightIntervals,
     analyze_growth,
     bootstrap_logistic_intervals,
+    bootstrap_model_weights,
 )
 
 
@@ -147,3 +149,105 @@ def test_analyze_growth_skips_bootstrap_when_exponential_wins():
 
     assert result.preferred_model == "exponential"
     assert result.logistic_intervals is None
+    assert result.weight_intervals is None
+
+
+def test_bootstrap_model_weights_returns_ordered_intervals():
+    time, values = _logistic_series(k=100.0, r=0.8, t0=5.0, n=20)
+
+    result = bootstrap_model_weights(time, values, n_boot=200, seed=0)
+
+    assert isinstance(result, WeightIntervals)
+    assert result.n_boot == 200
+    assert result.n_successful > 100
+    for interval in (result.p_exponential, result.p_linear, result.p_logistic):
+        assert 0.0 <= interval.low <= interval.median <= interval.high <= 1.0
+    # On clean logistic data the logistic-weight CI should sit well above 0.5.
+    assert result.p_logistic.low > 0.5
+
+
+def test_bootstrap_model_weights_seed_makes_results_deterministic():
+    time, values = _logistic_series(n=20)
+
+    a = bootstrap_model_weights(time, values, n_boot=100, seed=42)
+    b = bootstrap_model_weights(time, values, n_boot=100, seed=42)
+
+    assert a.p_exponential == b.p_exponential
+    assert a.p_linear == b.p_linear
+    assert a.p_logistic == b.p_logistic
+
+
+def test_bootstrap_model_weights_smaller_n_gives_wider_logistic_ci():
+    # Less data means the bootstrap pulls weights around more, so the
+    # winning-weight interval should be wider on n=8 than on n=22 even on
+    # clean data. (v1 does not yet accept noisy data, which is the textbook
+    # "wider CI" signal -- see TICKETS T-15.)
+    short_time, short_values = _logistic_series(
+        k=100.0, r=0.8, t0=5.0, n=8, start=0.0, stop=10.0
+    )
+    long_time, long_values = _logistic_series(
+        k=100.0, r=0.8, t0=5.0, n=22, start=0.0, stop=10.0
+    )
+
+    short = bootstrap_model_weights(short_time, short_values, n_boot=200, seed=0)
+    long_ = bootstrap_model_weights(long_time, long_values, n_boot=200, seed=0)
+
+    short_width = short.p_logistic.high - short.p_logistic.low
+    long_width = long_.p_logistic.high - long_.p_logistic.low
+    assert short_width >= long_width
+
+
+def test_analyze_growth_attaches_weight_intervals_when_logistic_preferred():
+    time, values = _logistic_series(k=100.0, r=0.75, t0=5.0, n=22)
+
+    result = analyze_growth(time, values, n_boot=150, bootstrap_seed=0)
+
+    assert result.weight_intervals is not None
+    assert result.weight_intervals.n_successful > 0
+    assert result.weight_intervals.p_logistic.low <= result.p_logistic <= result.weight_intervals.p_logistic.high
+
+
+def test_analyze_growth_skips_weight_intervals_when_n_boot_zero():
+    time, values = _logistic_series()
+    result = analyze_growth(time, values, n_boot=0)
+    assert result.weight_intervals is None
+
+
+def test_analyze_growth_skips_weight_intervals_when_linear_wins():
+    time = np.linspace(0.0, 10.0, 16)
+    values = 5.0 + 2.0 * time
+
+    result = analyze_growth(time, values)
+
+    assert result.preferred_model == "linear"
+    assert result.weight_intervals is None
+
+
+@pytest.mark.parametrize("bad_prior", [float("nan"), float("inf"), 0.0, -0.1])
+def test_bootstrap_model_weights_rejects_invalid_priors(bad_prior):
+    time, values = _logistic_series()
+    with pytest.raises(ValueError):
+        bootstrap_model_weights(time, values, n_boot=10, seed=0, prior_logistic=bad_prior)
+
+
+def test_summary_includes_ci_when_weight_intervals_available():
+    time, values = _logistic_series(k=100.0, r=0.75, t0=5.0, n=22)
+
+    result = analyze_growth(time, values, n_boot=150, bootstrap_seed=0)
+    summary = result.summary()
+
+    # Format: "(logistic, 1.00 confidence; 90% CI [0.99, 1.00])."
+    assert "90% CI [" in summary
+    assert "logistic, " in summary
+
+
+def test_summary_omits_ci_when_no_bootstrap_ran():
+    time = np.linspace(0.0, 10.0, 15)
+    values = 4.0 * np.exp(0.16 * time)
+
+    result = analyze_growth(time, values, n_boot=0)
+    summary = result.summary()
+
+    assert "CI [" not in summary
+    assert "still growing" not in summary  # T-05 rename
+    assert "accelerating" in summary

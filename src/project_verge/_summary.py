@@ -71,7 +71,24 @@ def _format_verdict_line(result: "GrowthAnalysis") -> str:
         "linear": result.p_linear,
         "logistic": result.p_logistic,
     }.get(result.preferred_model, 0.0)
-    return f"Verdict: {label} ({result.preferred_model}, {confidence:.2f} confidence)."
+    ci_suffix = _format_confidence_interval(result)
+    return f"Verdict: {label} ({result.preferred_model}, {confidence:.2f} confidence{ci_suffix})."
+
+
+def _format_confidence_interval(result: "GrowthAnalysis") -> str:
+    intervals = result.weight_intervals
+    if intervals is None or intervals.n_successful == 0:
+        return ""
+    interval_by_model = {
+        "exponential": intervals.p_exponential,
+        "linear": intervals.p_linear,
+        "logistic": intervals.p_logistic,
+    }
+    interval = interval_by_model.get(result.preferred_model)
+    if interval is None or not math.isfinite(interval.low) or not math.isfinite(interval.high):
+        return ""
+    pct = int(round(intervals.confidence * 100))
+    return f"; {pct}% CI [{interval.low:.2f}, {interval.high:.2f}]"
 
 
 def _format_K_line(K: "Interval") -> str:
@@ -101,14 +118,29 @@ def _format_diagnostic_line(result: "GrowthAnalysis") -> str:
     if mae is not None and math.isfinite(mae):
         parts.append(f"forecast log-MAE ({result.preferred_model}): {mae:.3g}")
     elif result.is_indeterminate:
-        parts.append(
+        parts.append(_format_indeterminate_weights(result))
+
+    return "; ".join(parts) + "."
+
+
+def _format_indeterminate_weights(result: "GrowthAnalysis") -> str:
+    intervals = result.weight_intervals
+    if intervals is None or intervals.n_successful == 0:
+        return (
             "posterior weights: "
             f"exponential {result.p_exponential:.2f}, "
             f"linear {result.p_linear:.2f}, "
             f"logistic {result.p_logistic:.2f}"
         )
-
-    return "; ".join(parts) + "."
+    return (
+        "posterior weights: "
+        f"exponential {result.p_exponential:.2f} "
+        f"[{intervals.p_exponential.low:.2f}, {intervals.p_exponential.high:.2f}], "
+        f"linear {result.p_linear:.2f} "
+        f"[{intervals.p_linear.low:.2f}, {intervals.p_linear.high:.2f}], "
+        f"logistic {result.p_logistic:.2f} "
+        f"[{intervals.p_logistic.low:.2f}, {intervals.p_logistic.high:.2f}]"
+    )
 
 
 def _should_show_logistic_intervals(result: "GrowthAnalysis") -> bool:

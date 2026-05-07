@@ -24,6 +24,7 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
   - `logistic_unidentifiable` — the logistic bend is not pinned down by the observed window
   - `signal_disagreement` — BIC prefers logistic but the supporting diagnostics (per-capita slope, log-residual curvature, forecast MAE) do not all agree
 - A `Diagnostics.signal_agreement` flag set giving the three supporting signals individually, plus `levelling_off_votes` (0–3) for the aggregate.
+- A `weight_intervals` field on the result with bootstrap percentile intervals on `p_exponential`, `p_linear`, and `p_logistic` so the headline confidence number itself comes with a confidence interval.
 - Supporting diagnostics: per-capita growth slope, log-residual curvature, and forward-chaining one-step forecast error for each candidate model.
 
 ## What v1 does not answer
@@ -80,7 +81,7 @@ print(analyze_growth(time, values, n_boot=200, bootstrap_seed=0).summary())
 Output:
 
 ```
-Verdict: leveling off (logistic, 1.00 confidence).
+Verdict: leveling off (logistic, 1.00 confidence; 90% CI [1.00, 1.00]).
 Estimated ceiling K ~= 120 [120, 120].
 Estimated inflection time ~= 6 [6, 6].
 Per-capita slope: -0.0075; forecast log-MAE (logistic): 6.29e-15.
@@ -95,10 +96,10 @@ Verdict: indeterminate (reason: logistic_unidentifiable).
 The logistic carrying capacity is not identified by the observed window.
 Estimated ceiling K ~= 200 [200, 200].
 Estimated inflection time ~= 12 [12, 12].
-Per-capita slope: -0.002307; posterior weights: exponential 0.00, linear 0.00, logistic 1.00.
+Per-capita slope: -0.002307; posterior weights: exponential 0.00 [0.00, 0.00], linear 0.00 [0.00, 0.00], logistic 1.00 [1.00, 1.00].
 ```
 
-The bootstrap intervals look implausibly tight here because the demo inputs are perfectly clean synthetic curves; on real noisy data they widen to reflect the true sampling uncertainty in the fit. For programmatic access rather than a printed summary, every value in the rendered output is also a typed attribute on `GrowthAnalysis` — `p_exponential`, `p_linear`, `p_logistic`, `preferred_model`, `is_indeterminate`, `indeterminate_reason`, `logistic_intervals.K`, etc.
+The bootstrap intervals look implausibly tight here because the demo inputs are perfectly clean synthetic curves; on real noisy data they widen to reflect the true sampling uncertainty in the fit. The verdict-line CI (e.g. `90% CI [1.00, 1.00]`) is a percentile interval on the winning posterior weight itself — a wide CI here means the headline confidence is fragile under resampling. The `accelerating` and `steady` cases show no CI because bootstrap is gated to run only when the logistic verdict is the focus or the result is indeterminate. For programmatic access rather than a printed summary, every value in the rendered output is also a typed attribute on `GrowthAnalysis` — `p_exponential`, `p_linear`, `p_logistic`, `preferred_model`, `is_indeterminate`, `indeterminate_reason`, `logistic_intervals.K`, `weight_intervals.p_logistic`, etc.
 
 ## API
 

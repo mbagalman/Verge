@@ -7,8 +7,13 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
-from ._fit import fit_logistic_model, logistic_curve
-from ._types import BootstrapIntervals, Interval
+from ._fit import (
+    fit_exponential_model,
+    fit_linear_model,
+    fit_logistic_model,
+    logistic_curve,
+)
+from ._types import BootstrapIntervals, Interval, WeightIntervals
 
 # Bootstrap resamples can be lopsided (many duplicates of a few points), so we
 # allow the inner fitter to attempt a fit on smaller effective samples than the
@@ -122,6 +127,135 @@ def bootstrap_logistic_intervals(
         horizons=tuple(float(h) for h in horizons_arr),
         predicted_intervals=predicted_intervals,
     )
+
+
+def bootstrap_model_weights(
+    time: Sequence[float],
+    values: Sequence[float],
+    *,
+    prior_exponential: float = 0.5,
+    prior_linear: float = 0.5,
+    prior_logistic: float = 0.5,
+    n_boot: int = 500,
+    confidence: float = 0.90,
+    seed: Optional[int] = None,
+) -> WeightIntervals:
+    """Pair-bootstrap percentile intervals for the BIC-derived posterior weights.
+
+    Resamples ``(time, values)`` pairs with replacement, refits all three
+    candidate models (exponential, linear, logistic) on each resample,
+    recomputes the BIC-derived three-way weights, and returns percentile
+    intervals at the requested ``confidence`` level. Resamples where every
+    fit fails to produce a finite BIC are skipped and counted via
+    ``n_successful``.
+    """
+
+    _validate_confidence(confidence)
+    _validate_weight_priors(prior_exponential, prior_linear, prior_logistic)
+    if n_boot < 0:
+        raise ValueError("n_boot must be non-negative")
+
+    time_arr, values_arr = _prepare_bootstrap_inputs(time, values)
+    origin = float(time_arr[0])
+    time_norm = time_arr - origin
+
+    rng = np.random.default_rng(seed)
+    n = len(time_norm)
+
+    p_exp_samples: List[float] = []
+    p_lin_samples: List[float] = []
+    p_log_samples: List[float] = []
+
+    for _ in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        order = np.argsort(time_norm[idx])
+        t_boot = time_norm[idx][order]
+        y_boot = values_arr[idx][order]
+
+        try:
+            exp_fit = fit_exponential_model(t_boot, y_boot, min_points=_BOOTSTRAP_MIN_POINTS)
+            lin_fit = fit_linear_model(t_boot, y_boot, min_points=_BOOTSTRAP_MIN_POINTS)
+            log_fit = fit_logistic_model(t_boot, y_boot, min_points=_BOOTSTRAP_MIN_POINTS)
+        except ValueError:
+            continue
+
+        weights = _three_way_weights(
+            exp_fit.bic,
+            lin_fit.bic,
+            log_fit.bic,
+            prior_exponential=prior_exponential,
+            prior_linear=prior_linear,
+            prior_logistic=prior_logistic,
+        )
+        if weights is None:
+            continue
+        p_exp, p_lin, p_log = weights
+        p_exp_samples.append(p_exp)
+        p_lin_samples.append(p_lin)
+        p_log_samples.append(p_log)
+
+    n_successful = len(p_exp_samples)
+    return WeightIntervals(
+        n_boot=n_boot,
+        n_successful=n_successful,
+        confidence=float(confidence),
+        p_exponential=_percentile_interval(p_exp_samples, confidence),
+        p_linear=_percentile_interval(p_lin_samples, confidence),
+        p_logistic=_percentile_interval(p_log_samples, confidence),
+    )
+
+
+def _three_way_weights(
+    bic_exp: float,
+    bic_lin: float,
+    bic_log: float,
+    *,
+    prior_exponential: float,
+    prior_linear: float,
+    prior_logistic: float,
+) -> Optional[tuple]:
+    """Normalize BIC-derived weights across three models. Returns ``None`` when
+    no model has a finite BIC."""
+
+    bics = np.array([bic_exp, bic_lin, bic_log], dtype=float)
+    priors = np.array([prior_exponential, prior_linear, prior_logistic], dtype=float)
+    finite_mask = np.isfinite(bics)
+    if not np.any(finite_mask):
+        return None
+    min_bic = np.min(bics[finite_mask])
+    log_weights = np.full(3, -np.inf, dtype=float)
+    log_weights[finite_mask] = np.log(priors[finite_mask]) - 0.5 * (bics[finite_mask] - min_bic)
+    normalization = np.logaddexp.reduce(log_weights[finite_mask])
+    probabilities = np.zeros(3, dtype=float)
+    probabilities[finite_mask] = np.exp(log_weights[finite_mask] - normalization)
+    return float(probabilities[0]), float(probabilities[1]), float(probabilities[2])
+
+
+def _prepare_bootstrap_inputs(time, values):
+    """Validation shared between the two bootstrap entry points."""
+    time_arr = np.asarray(time, dtype=float)
+    values_arr = np.asarray(values, dtype=float)
+    if time_arr.ndim != 1 or values_arr.ndim != 1:
+        raise ValueError("time and values must be one-dimensional sequences")
+    if len(time_arr) != len(values_arr):
+        raise ValueError("time and values must have the same length")
+    if len(time_arr) < _BOOTSTRAP_MIN_POINTS:
+        raise ValueError(
+            f"at least {_BOOTSTRAP_MIN_POINTS} observations are required for bootstrap"
+        )
+    if not np.all(np.isfinite(time_arr)) or not np.all(np.isfinite(values_arr)):
+        raise ValueError("time and values must contain only finite numbers")
+    if np.any(values_arr <= 0.0):
+        raise ValueError("values must be strictly positive")
+    return time_arr, values_arr
+
+
+def _validate_weight_priors(*priors: float) -> None:
+    for prior in priors:
+        if not math.isfinite(prior):
+            raise ValueError("weight priors must be finite")
+        if prior <= 0.0:
+            raise ValueError("weight priors must be strictly positive")
 
 
 def _percentile_interval(samples: List[float], confidence: float) -> Interval:

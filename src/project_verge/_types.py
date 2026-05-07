@@ -99,6 +99,24 @@ class BootstrapIntervals:
 
 
 @dataclass(frozen=True)
+class WeightIntervals:
+    """Bootstrap percentile intervals for the BIC-derived posterior weights.
+
+    A narrow interval on the winning weight means the verdict's headline
+    confidence is itself robust to resampling; a wide interval means the
+    confidence is fragile and the verdict should be read with corresponding
+    caution.
+    """
+
+    n_boot: int
+    n_successful: int
+    confidence: float
+    p_exponential: Interval
+    p_linear: Interval
+    p_logistic: Interval
+
+
+@dataclass(frozen=True)
 class GrowthAnalysis:
     """End-to-end result returned by :func:`analyze_growth`."""
 
@@ -114,6 +132,7 @@ class GrowthAnalysis:
     diagnostics: Diagnostics
     assumptions: Tuple[str, ...]
     logistic_intervals: Optional[BootstrapIntervals]
+    weight_intervals: Optional[WeightIntervals]
 
     def summary(self) -> str:
         """Return a short human-readable verdict suitable for ``print(result)``."""
