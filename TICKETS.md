@@ -23,7 +23,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-01 | Add a "neither model fits" exit | P0 | M+C | M | — | **done** (`a99d601`) |
 | T-02 | Bootstrap CI on K, t0, and predicted value | P0 | M+C | M | — | **done** (`eb37fe1`) |
 | T-03 | `GrowthAnalysis.summary()` with human-readable verdict | P0 | C | S | T-02 (soft) | **done** (`397a3d5`) |
-| T-04 | Reframe README around the real question + show indeterminate case | P0 | D | S | T-03 | open |
+| T-04 | Reframe README around the real question + show indeterminate case | P0 | D | S | T-03 | **done** (`c769031`) |
 | T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 | open |
 | T-06 | Wire diagnostics (slope sig., curvature sig., forecast MAE) into verdict | P1 | M+C | M | — | open |
 | T-07 | Bootstrap CI on the model weights themselves | P1 | M+C | S | T-02 | open |
@@ -110,7 +110,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-04: Reframe README around the real question + show the indeterminate case
-**Category:** Docs · **Effort:** S · **Depends on:** T-03
+**Category:** Docs · **Effort:** S · **Depends on:** T-03 · **Status:** Done in commit `c769031`
 
 **Problem.** [README.md](README.md) leads with "compares exponential vs logistic." User's question is "will this level off?" Quick Start also doesn't show the indeterminate case, which is the most honest output.
 
