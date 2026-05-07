@@ -37,6 +37,11 @@ _INDETERMINATE_NOTE = {
         "no clean verdict for power-law growth (it is neither leveling off nor "
         "purely exponential / linear)."
     ),
+    "fragile_verdict": (
+        "BIC favors a single model, but the bootstrap CI on its weight is wide "
+        "enough that the verdict could swap under resampling -- treat the "
+        "headline confidence as unreliable."
+    ),
 }
 
 

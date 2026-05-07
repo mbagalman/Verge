@@ -24,6 +24,7 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
   - `ambiguous_evidence` — no model is decisively preferred by BIC
   - `logistic_unidentifiable` — the logistic bend is not pinned down by the observed window
   - `signal_disagreement` — BIC prefers logistic but the supporting diagnostics (per-capita slope, log-residual curvature, forecast MAE) do not all agree
+  - `fragile_verdict` — BIC favors a single model but the bootstrap CI on its weight is wider than `max_weight_ci_width` (default 0.40), meaning the verdict could swap under resampling
 - A `Diagnostics.signal_agreement` flag set giving the three supporting signals individually, plus `levelling_off_votes` (0–3) for the aggregate.
 - A `weight_intervals` field on the result with bootstrap percentile intervals on `p_exponential`, `p_linear`, and `p_logistic` so the headline confidence number itself comes with a confidence interval.
 - Supporting diagnostics: per-capita growth slope, log-residual curvature, and forward-chaining one-step forecast error for each candidate model.
@@ -139,7 +140,7 @@ Pass an existing `ax` to compose with other axes; pass `extrapolate_fraction=0` 
 
 ## API
 
-### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
+### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
@@ -225,9 +226,12 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 
 **Signature.** Data with no underlying growth model at all but happens to be nondecreasing — for example, `y = 1 + cumsum(|N(0, 1)|)` with `n = 20`.
 
-**Library response.** Often classifies as `leveling off` with apparent confidence, because cumulative-noise series happen to be concave on the log scale and the logistic fits them well by R². On a typical seed this gives `Verdict: leveling off (logistic, 0.78 confidence; 90% CI [0.35, 1.00])` — the **wide CI on the winning weight** is the honesty signal Verge gives back when the verdict is fragile.
+**Library response.** Two automatic gates catch this in v1:
 
-**Mitigation.** Always read the verdict-line CI from `weight_intervals` alongside the headline confidence. A wide weight CI (anything spanning more than ~0.3) means the verdict could swap under resampling and should not be treated as decisive. Cross-check with domain knowledge.
+- **Power-law shape detection.** Cumulative-noise series have shape statistics that are well-approximated by a power-law fit, so most random-walk-like seeds now classify as `indeterminate (reason: power_law_shape)` — no false confidence on the headline.
+- **Fragile-verdict gate.** When a verdict survives the other indeterminate checks but its bootstrap weight CI is wider than `max_weight_ci_width` (default 0.40), the verdict is downgraded to `indeterminate (reason: fragile_verdict)`. This catches cases where BIC picks a model decisively but resampling shows the choice is unstable.
+
+**Mitigation.** None needed for typical inputs at default thresholds; the two gates handle this automatically. Tune `max_weight_ci_width` lower (toward 0.0) for stricter rejection of fragile verdicts, or higher (toward 1.0) to disable the gate. Cross-checking with domain knowledge is still wise — Verge can only see the data it is given.
 
 ### Already-saturated series
 

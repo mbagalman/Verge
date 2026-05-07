@@ -13,7 +13,7 @@ from ._fit import (
     fit_power_law_model,
     prepare_inputs,
 )
-from ._types import GrowthAnalysis, ModelFit, SignalAgreement
+from ._types import GrowthAnalysis, ModelFit, SignalAgreement, WeightIntervals
 from ._uncertainty import bootstrap_logistic_intervals, bootstrap_model_weights
 
 
@@ -47,6 +47,7 @@ def analyze_growth(
     prior_power_law: float = 0.5,
     min_points: int = 8,
     min_fit_quality: float = 0.85,
+    max_weight_ci_width: float = 0.40,
     horizons: Optional[Sequence[float]] = None,
     n_boot: int = 500,
     bootstrap_confidence: float = 0.90,
@@ -60,6 +61,7 @@ def analyze_growth(
     input_values_array = np.asarray(values, dtype=float)
     _validate_priors(prior_exponential, prior_linear, prior_logistic, prior_power_law)
     _validate_fit_quality(min_fit_quality)
+    _validate_max_weight_ci_width(max_weight_ci_width)
 
     exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
     linear_fit = fit_linear_model(normalized_time, normalized_values, min_points=min_points)
@@ -154,6 +156,17 @@ def analyze_growth(
         logistic_intervals = None
         weight_intervals = None
 
+    # Fragile-verdict gate (T-28). Last in the indeterminate precedence chain
+    # because it relies on bootstrap data that the earlier gates do not need.
+    # Only downgrades verdicts that were otherwise decisive; once-indeterminate
+    # results keep their structured reason.
+    if not is_indeterminate and _verdict_is_fragile(
+        leading_model, weight_intervals, max_weight_ci_width
+    ):
+        indeterminate_reason = "fragile_verdict"
+        is_indeterminate = True
+        preferred_model = "indeterminate"
+
     return GrowthAnalysis(
         p_exponential=float(p_exponential),
         p_linear=float(p_linear),
@@ -203,6 +216,38 @@ def _posterior_model_weights(
     return {name: float(p) for name, p in zip(names, probabilities)}
 
 
+def _verdict_is_fragile(
+    leading_model: str,
+    weight_intervals: Optional[WeightIntervals],
+    max_width: float,
+) -> bool:
+    """Return True when the bootstrap CI on the leading model's weight is too wide.
+
+    "Too wide" means the percentile interval spans more than ``max_width`` of
+    the [0, 1] range -- a verdict whose own confidence number could swap
+    materially under resampling. The gate is a safety net for cases that
+    pass every earlier indeterminate check but still rest on unstable
+    evidence (e.g. some random-walk-like inputs once T-15 admits noisy
+    data); it only fires when ``weight_intervals`` is populated, since
+    without bootstrap data there is no fragility signal to act on.
+    """
+
+    if weight_intervals is None or weight_intervals.n_successful == 0:
+        return False
+    interval_by_model = {
+        "exponential": weight_intervals.p_exponential,
+        "linear": weight_intervals.p_linear,
+        "logistic": weight_intervals.p_logistic,
+        "power_law": weight_intervals.p_power_law,
+    }
+    interval = interval_by_model.get(leading_model)
+    if interval is None:
+        return False
+    if not math.isfinite(interval.low) or not math.isfinite(interval.high):
+        return False
+    return (interval.high - interval.low) > max_width
+
+
 def _signals_disagree_with_logistic_verdict(
     leading_model: str,
     agreement: SignalAgreement,
@@ -236,3 +281,12 @@ def _validate_fit_quality(min_fit_quality: float) -> None:
         raise ValueError("min_fit_quality must be finite")
     if min_fit_quality > 1.0:
         raise ValueError("min_fit_quality must be at most 1.0")
+
+
+def _validate_max_weight_ci_width(max_weight_ci_width: float) -> None:
+    if not math.isfinite(max_weight_ci_width):
+        raise ValueError("max_weight_ci_width must be finite")
+    # 0.0 is a valid maximum-strictness setting: any positive CI width on the
+    # winning weight will trip the fragile_verdict gate.
+    if max_weight_ci_width < 0.0 or max_weight_ci_width > 1.0:
+        raise ValueError("max_weight_ci_width must be in the closed interval [0, 1]")
