@@ -1,28 +1,34 @@
 # Project Verge
 
-Project Verge is a Python library for one narrow question:
+Project Verge answers one focused question about a positive, growing time series:
 
-Given a positive, increasing time series, is the observed growth better explained by a simple exponential curve or by the early part of a logistic S-curve?
+> **Is there evidence this is leveling off, or evidence it's still going up?**
 
-The package returns an approximate probability for each model using posterior model weights derived from Bayesian Information Criterion (BIC) under a shared log-scale observation model.
+It compares two candidate trajectories — pure exponential growth and the early part of a logistic S-curve — using posterior model weights derived from BIC under a shared log-normal observation model, and returns one of three verdicts:
 
-## What v1 does
+- **leveling off** — an S-curve fits better, with bootstrap percentile intervals for the carrying capacity `K`, the inflection time `t0`, and any prediction horizons you ask for
+- **still growing** — exponential growth fits better; no leveling-off signal in the data yet
+- **indeterminate** — the data does not yet contain enough evidence to choose, with a structured reason explaining why
 
-- Fits exponential and logistic growth curves to a univariate time series.
-- Returns `p_exponential` and `p_logistic` as approximate model-evidence weights.
-- Flags ambiguous cases as `indeterminate` instead of overclaiming.
-- Reports supporting diagnostics:
-  - per-capita growth slope versus level
-  - log-residual curvature
-  - forward-chaining one-step forecast error comparison
-  - logistic identifiability warnings
+The "indeterminate" branch is intentional. A real-world series with only a handful of early data points often *cannot* be classified honestly, and Verge would rather say "I can't tell yet" than overclaim a confident verdict.
 
-## What v1 does not do
+## What v1 answers
 
-- It does not prove a system will saturate in the real world.
-- It does not calibrate probabilities for every domain.
-- It does not yet support non-monotone, highly noisy, or multivariate series.
-- It does not include a CLI in the initial release.
+- The verdict (`still growing` / `leveling off` / `indeterminate`) and a one-line `summary()` you can `print()`.
+- Posterior model weights `p_exponential` and `p_logistic` as approximate model-comparison evidence (BIC under a shared log-normal observation model).
+- When the logistic verdict is the focus, a pair-bootstrap percentile interval for the carrying capacity `K`, the inflection time `t0`, and predicted values at any horizons you supply.
+- A structured `indeterminate_reason` so callers can branch on *why* a verdict is being withheld:
+  - `neither_model_fits` — both curves explain the data poorly (e.g. polynomial growth)
+  - `ambiguous_evidence` — neither model is decisively preferred
+  - `logistic_unidentifiable` — the logistic bend is not pinned down by the observed window
+- Supporting diagnostics: per-capita growth slope, log-residual curvature, and forward-chaining one-step forecast error for each candidate model.
+
+## What v1 does not answer
+
+- Whether a real-world process will *actually* saturate. Verge reports the evidence in the data under explicit modeling assumptions, not a guarantee about the future.
+- Verdicts on noisy or non-monotone series. The v1 input contract is intentionally narrow; see *Input Contract* below.
+- A choice between richer S-curve families (Gompertz, Richards, etc.). v1 only compares pure exponential against the standard logistic.
+- A CLI. v1 is library-only.
 
 ## Installation
 
@@ -42,18 +48,44 @@ python3 -m pip install -e '.[dev]'
 import numpy as np
 from project_verge import analyze_growth
 
+# 1) Series with clear S-curve shape — leveling off detected.
 time = np.linspace(0.0, 12.0, 18)
 values = 120.0 / (1.0 + np.exp(-0.7 * (time - 6.0)))
+print(analyze_growth(time, values, n_boot=200, bootstrap_seed=0).summary())
+print()
 
-result = analyze_growth(time, values)
+# 2) Series with no leveling-off signal yet — exponential wins.
+time = np.linspace(0.0, 12.0, 18)
+values = 3.0 * np.exp(0.18 * time)
+print(analyze_growth(time, values, n_boot=200, bootstrap_seed=0).summary())
+print()
 
-print(result.p_exponential)
-print(result.p_logistic)
-print(result.preferred_model)
-print(result.is_indeterminate)
-print(result.diagnostics.fit_warnings)
-print(result.diagnostics.identifiability_warnings)
+# 3) Early-stage S-curve — the carrying capacity is not yet identified by
+#    the observed window, so the honest verdict is indeterminate.
+time = np.linspace(0.0, 5.0, 10)
+values = 200.0 / (1.0 + np.exp(-0.35 * (time - 12.0)))
+print(analyze_growth(time, values, n_boot=200, bootstrap_seed=0).summary())
 ```
+
+Output:
+
+```
+Verdict: leveling off (logistic, 1.00 confidence).
+Estimated ceiling K ~= 120 [120, 120].
+Estimated inflection time ~= 6 [6, 6].
+Per-capita slope: -0.0075; forecast log-MAE (logistic): 6.29e-15.
+
+Verdict: still growing (exponential, 1.00 confidence).
+Per-capita slope: +1.055e-18; forecast log-MAE (exponential): 1.54e-16.
+
+Verdict: indeterminate (reason: logistic_unidentifiable).
+The logistic carrying capacity is not identified by the observed window.
+Estimated ceiling K ~= 200 [200, 200].
+Estimated inflection time ~= 12 [12, 12].
+Per-capita slope: -0.002307; posterior weights: exponential 0.00, logistic 1.00.
+```
+
+The bootstrap intervals look implausibly tight here because the demo inputs are perfectly clean synthetic curves; on real noisy data they widen to reflect the true sampling uncertainty in the fit. For programmatic access rather than a printed summary, every value in the rendered output is also a typed attribute on `GrowthAnalysis` — `p_exponential`, `p_logistic`, `preferred_model`, `is_indeterminate`, `indeterminate_reason`, `logistic_intervals.K`, etc.
 
 ## API
 
@@ -87,22 +119,28 @@ Version 1 assumes:
 - `values` is nondecreasing
 - at least 8 observations are provided for `analyze_growth`
 
-## Interpreting the Probability
+## Interpreting the Verdict
 
-The headline probabilities are:
+The verdict is one of three categorical labels — `still growing`, `leveling off`, or `indeterminate` — chosen from the leading model when a model is clearly preferred *and* the underlying fit passes a quality floor *and* (for logistic) the curve is identified by the observed window. If any of those checks fails, the verdict is forced to `indeterminate` with a structured `indeterminate_reason`.
 
-- conditioned on the exponential and logistic models being the two candidates
+The reported confidence is the posterior model weight of the winning model, approximated from BIC under the shared log-normal observation model. Those weights are:
+
+- conditioned on exponential and logistic being the two candidates
 - conditioned on the log-normal observation model
-- approximate, because BIC is used as a tractable model-evidence proxy
+- approximate, because BIC is used as a tractable proxy for full Bayesian model evidence
 
-They should be read as model-comparison evidence, not as a universal forecast probability that a real-world process must plateau.
+They should be read as model-comparison evidence, not as a universal forecast probability that a real-world process must (or must not) plateau. The v1 model space is narrow on purpose; the [TICKETS](TICKETS.md) backlog tracks planned extensions to richer S-curve families and a sub-exponential baseline.
+
+Bootstrap intervals on `K`, `t0`, and prediction horizons are pair-bootstrap percentile intervals at the configured confidence level (default 90%). They quantify how much the logistic fit moves under resampling. A wide interval when the logistic is the preferred verdict is a load-bearing honesty signal — it means the data does not yet pin down where the plateau is — not a bug.
 
 ## Repository Layout
 
 - `src/project_verge/`: library source
 - `tests/`: unit tests
 - `examples/demo_growth_analysis.py`: runnable demonstration
-- `PROJECT_PLAN.md`: living tracker for milestones, review items, and backlog
+- `docs/methodology.md`: design notebook walking through the diagnostic intuitions
+- `PROJECT_PLAN.md`: project plan and decision log
+- `TICKETS.md`: prioritized backlog of methodology, code, and docs work
 
 ## Development
 

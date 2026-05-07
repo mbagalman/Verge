@@ -6,14 +6,9 @@ from project_verge import analyze_growth
 
 
 def run_case(name, time, values):
-    result = analyze_growth(time, values)
-    print(f"{name}:")
-    print(f"  p_exponential={result.p_exponential:.3f}")
-    print(f"  p_logistic={result.p_logistic:.3f}")
-    print(f"  preferred_model={result.preferred_model}")
-    print(f"  is_indeterminate={result.is_indeterminate}")
-    print(f"  fit_warnings={result.diagnostics.fit_warnings}")
-    print(f"  identifiability_warnings={result.diagnostics.identifiability_warnings}")
+    result = analyze_growth(time, values, n_boot=200, bootstrap_seed=0)
+    print(f"=== {name} ===")
+    print(result.summary())
     print()
 
 
