@@ -19,13 +19,18 @@ _VERDICT_LABEL = {
 
 _INDETERMINATE_NOTE = {
     "neither_model_fits": (
-        "Neither exponential nor logistic explains this data well on the log scale."
+        "None of the candidate models (exponential, linear, logistic) explains "
+        "this data well on the log scale."
     ),
     "ambiguous_evidence": (
-        "Posterior weights between exponential and logistic are too close to call."
+        "Posterior weights are too close to call between the candidate models."
     ),
     "logistic_unidentifiable": (
         "The logistic carrying capacity is not identified by the observed window."
+    ),
+    "signal_disagreement": (
+        "BIC prefers logistic, but the supporting diagnostics (per-capita slope, "
+        "log-residual curvature, forecast MAE) do not all point to leveling off."
     ),
 }
 

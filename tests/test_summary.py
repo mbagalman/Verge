@@ -78,7 +78,7 @@ def test_summary_for_polynomial_marks_neither_model_fits_and_omits_K():
 
     assert "indeterminate" in summary
     assert "neither_model_fits" in summary
-    assert "Neither exponential nor logistic" in summary
+    assert "None of the candidate models" in summary
     assert "Log-space R^2" in summary
     # The underlying logistic fit is untrustworthy here, so K must not be
     # advertised in the summary even if the bootstrap had run.

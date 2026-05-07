@@ -12,7 +12,7 @@ from ._fit import (
     fit_logistic_model,
     prepare_inputs,
 )
-from ._types import GrowthAnalysis, ModelFit
+from ._types import GrowthAnalysis, ModelFit, SignalAgreement
 from ._uncertainty import bootstrap_logistic_intervals
 
 
@@ -83,13 +83,16 @@ def analyze_growth(
 
     # Reason precedence: an absolute fit-quality failure dominates relative
     # model comparison, which in turn dominates a logistic-only identifiability
-    # caveat. Only one reason is reported even when several apply.
+    # caveat, which in turn dominates a multi-signal disagreement. Only one
+    # reason is reported even when several apply.
     if all_fits_poor:
         indeterminate_reason: Optional[str] = "neither_model_fits"
     elif winning_weight < 0.70:
         indeterminate_reason = "ambiguous_evidence"
     elif leading_model == "logistic" and logistic_poorly_identified:
         indeterminate_reason = "logistic_unidentifiable"
+    elif _signals_disagree_with_logistic_verdict(leading_model, diagnostics.signal_agreement):
+        indeterminate_reason = "signal_disagreement"
     else:
         indeterminate_reason = None
 
@@ -161,6 +164,26 @@ def _posterior_model_weights(
     probabilities = np.zeros(len(names), dtype=float)
     probabilities[finite_mask] = np.exp(log_weights[finite_mask] - normalization)
     return {name: float(p) for name, p in zip(names, probabilities)}
+
+
+def _signals_disagree_with_logistic_verdict(
+    leading_model: str,
+    agreement: SignalAgreement,
+) -> bool:
+    """Second-opinion check applied only to a BIC-derived logistic verdict.
+
+    Per-capita-slope and log-residual-curvature can be significantly negative
+    for clean linear data too (because ``log(a + b*t)`` is concave and
+    ``b/y`` decreases with ``y``), so applying the same gate symmetrically
+    against non-logistic verdicts would over-fire on linear cases. The
+    asymmetry is deliberate: BIC's three-way comparison already weighs
+    exponential vs linear vs logistic against each other, so the supporting
+    signals only need to second-guess the logistic branch.
+    """
+
+    if leading_model != "logistic":
+        return False
+    return agreement.levelling_off_votes < 2
 
 
 def _validate_priors(*priors: float) -> None:

@@ -26,15 +26,44 @@ class ModelFit:
 
 
 @dataclass(frozen=True)
+class SignalAgreement:
+    """Boolean flags for the three non-BIC signals that point toward leveling off.
+
+    Each flag is ``True`` when the corresponding signal is consistent with
+    logistic (S-curve) growth rather than exponential or linear growth. The
+    aggregate vote count is exposed via :attr:`levelling_off_votes`.
+    """
+
+    per_capita_slope_negative: bool
+    residual_curvature_negative: bool
+    logistic_has_best_forecast: bool
+
+    @property
+    def levelling_off_votes(self) -> int:
+        return (
+            int(self.per_capita_slope_negative)
+            + int(self.residual_curvature_negative)
+            + int(self.logistic_has_best_forecast)
+        )
+
+
+@dataclass(frozen=True)
 class Diagnostics:
     """Supporting diagnostics for interpreting the primary model comparison."""
 
     per_capita_slope: float
     per_capita_intercept: float
+    per_capita_slope_std_err: float
+    per_capita_slope_t_stat: float
+    per_capita_slope_p_value: float
     residual_curvature_score: float
+    residual_curvature_std_err: float
+    residual_curvature_t_stat: float
+    residual_curvature_p_value: float
     forecast_mae_exponential: float
     forecast_mae_linear: float
     forecast_mae_logistic: float
+    signal_agreement: SignalAgreement
     fit_warnings: Tuple[str, ...] = ()
     identifiability_warnings: Tuple[str, ...] = ()
 

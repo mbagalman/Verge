@@ -7,6 +7,7 @@ from ._types import (
     GrowthAnalysis,
     Interval,
     ModelFit,
+    SignalAgreement,
 )
 from ._uncertainty import bootstrap_logistic_intervals
 
@@ -16,6 +17,7 @@ __all__ = [
     "GrowthAnalysis",
     "Interval",
     "ModelFit",
+    "SignalAgreement",
     "analyze_growth",
     "bootstrap_logistic_intervals",
     "fit_exponential",

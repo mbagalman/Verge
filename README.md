@@ -19,9 +19,11 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
 - Posterior model weights `p_exponential`, `p_linear`, and `p_logistic` as approximate model-comparison evidence (BIC under a shared log-normal observation model).
 - When the logistic verdict is the focus, a pair-bootstrap percentile interval for the carrying capacity `K`, the inflection time `t0`, and predicted values at any horizons you supply.
 - A structured `indeterminate_reason` so callers can branch on *why* a verdict is being withheld:
-  - `neither_model_fits` — both curves explain the data poorly (e.g. polynomial growth)
-  - `ambiguous_evidence` — neither model is decisively preferred
+  - `neither_model_fits` — none of the candidate models (exponential, linear, logistic) explains the data well on the log scale (e.g. polynomial growth)
+  - `ambiguous_evidence` — no model is decisively preferred by BIC
   - `logistic_unidentifiable` — the logistic bend is not pinned down by the observed window
+  - `signal_disagreement` — BIC prefers logistic but the supporting diagnostics (per-capita slope, log-residual curvature, forecast MAE) do not all agree
+- A `Diagnostics.signal_agreement` flag set giving the three supporting signals individually, plus `levelling_off_votes` (0–3) for the aggregate.
 - Supporting diagnostics: per-capita growth slope, log-residual curvature, and forward-chaining one-step forecast error for each candidate model.
 
 ## What v1 does not answer
