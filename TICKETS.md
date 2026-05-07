@@ -32,7 +32,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-10 | Failure-modes section in README | P1 | D | S | T-01 | **done** (`c9c528f`) |
 | T-11 | Real-data example (UN population) | P1 | D | S | — | open |
 | T-27 | Power-law shape detection (catches polynomial misclassification) | P1 | M | M | T-01 | **done** (`9e63106`) |
-| T-28 | Auto-downgrade verdict on wide weight CI (catches random-walk fragility) | P1 | M+C | S | T-07 | open |
+| T-28 | Auto-downgrade verdict on wide weight CI (catches random-walk fragility) | P1 | M+C | S | T-07 | **done** (`ecab902`) |
 | T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | open |
 | T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — | open |
 | T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — | open |
@@ -284,7 +284,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-28: Auto-downgrade verdict to indeterminate when weight CI is too wide
-**Category:** Methodology + Code · **Effort:** S · **Depends on:** T-07
+**Category:** Methodology + Code · **Effort:** S · **Depends on:** T-07 · **Status:** Done in commit `ecab902`
 
 **Problem.** Surfaced by writing the [README's "Failure modes / Random-walk-like or unstructured series"](README.md) section in T-10. Random-walk-like data (nondecreasing cumulative noise) produces a confident-looking verdict line — `Verdict: leveling off (logistic, 0.78 confidence; 90% CI [0.35, 1.00])`. T-07's weight CI is wide, signaling fragility, but the headline still reads "0.78 confidence." A user not paying close attention to the CI suffix can be misled by the headline. The CI is the load-bearing honesty signal but it is too easy to skip past.
 
