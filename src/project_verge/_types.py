@@ -39,6 +39,36 @@ class Diagnostics:
 
 
 @dataclass(frozen=True)
+class Interval:
+    """Percentile interval (low, median, high) at the bootstrap confidence level."""
+
+    low: float
+    median: float
+    high: float
+
+
+@dataclass(frozen=True)
+class BootstrapIntervals:
+    """Bootstrap uncertainty intervals for the logistic fit and any requested horizons.
+
+    ``K`` and ``r`` are reported in the same units as the input ``values`` and
+    ``time``. ``t0`` is reported in the *original* time coordinate (i.e. without
+    the internal time-origin shift applied by :func:`analyze_growth`).
+    ``predicted_intervals`` is one :class:`Interval` per requested horizon, in
+    the order the horizons were supplied.
+    """
+
+    n_boot: int
+    n_successful: int
+    confidence: float
+    K: Interval
+    r: Interval
+    t0: Interval
+    horizons: Tuple[float, ...]
+    predicted_intervals: Tuple[Interval, ...]
+
+
+@dataclass(frozen=True)
 class GrowthAnalysis:
     """End-to-end result returned by :func:`analyze_growth`."""
 
@@ -51,3 +81,4 @@ class GrowthAnalysis:
     logistic_fit: ModelFit
     diagnostics: Diagnostics
     assumptions: Tuple[str, ...]
+    logistic_intervals: Optional[BootstrapIntervals]

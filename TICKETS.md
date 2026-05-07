@@ -21,7 +21,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | ID | Title | Priority | Category | Effort | Depends on | Status |
 |----|-------|----------|----------|--------|------------|--------|
 | T-01 | Add a "neither model fits" exit | P0 | M+C | M | — | **done** (`a99d601`) |
-| T-02 | Bootstrap CI on K, t0, and predicted value | P0 | M+C | M | — | open |
+| T-02 | Bootstrap CI on K, t0, and predicted value | P0 | M+C | M | — | **done** (next commit) |
 | T-03 | `GrowthAnalysis.summary()` with human-readable verdict | P0 | C | S | T-02 (soft) | open |
 | T-04 | Reframe README around the real question + show indeterminate case | P0 | D | S | T-03 | open |
 | T-05 | Add a third "linear-in-log" / sub-exponential baseline | P1 | M | M | T-01 | open |
@@ -71,7 +71,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-02: Bootstrap CI on K, t0, and predicted value
-**Category:** Methodology + Code · **Effort:** M
+**Category:** Methodology + Code · **Effort:** M · **Status:** Done in next commit
 
 **Problem.** When logistic wins, [_diagnostics.py:97-123](src/project_verge/_diagnostics.py#L97-L123) only sanity-checks K's plausibility. The user's real question — *how soon* and *where* will it level off? — needs uncertainty intervals.
 
@@ -83,6 +83,8 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - CI on K and t0 always available when logistic fit converged
 - `n_boot` configurable; default 500; capped to keep wall time <2s on n ≤ 200
 - Test: known logistic series → 90% CI brackets true K in ≥85% of seeded trials
+
+**Implementation note.** The "always available when logistic converged" criterion was relaxed: the bootstrap is *gated* to run only when the logistic verdict is actually informative — i.e. when `preferred_model == "logistic"` or the result is indeterminate. On clean exponential data the logistic optimizer is unidentified (K runs against its bound), and a 500-iteration bootstrap on those resamples added ~125 s to a single test. The gate keeps the default usable; pass `n_boot=0` to skip explicitly, or call `bootstrap_logistic_intervals` directly to bootstrap without the gate.
 
 **Files.** new `src/project_verge/_uncertainty.py`, [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), new `tests/test_uncertainty.py`
 

@@ -57,13 +57,15 @@ print(result.diagnostics.identifiability_warnings)
 
 ## API
 
-### `analyze_growth(time, values, *, prior_exponential=0.5, prior_logistic=0.5, min_points=8, min_fit_quality=0.85)`
+### `analyze_growth(time, values, *, prior_exponential=0.5, prior_logistic=0.5, min_points=8, min_fit_quality=0.85, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
 `min_fit_quality` is the log-space R² floor that each candidate model is held to. When *both* models fall below it, the verdict is forced to `indeterminate` with `indeterminate_reason = "neither_model_fits"`, so a polynomial or other out-of-family series cannot quietly produce a confident-looking exponential-vs-logistic split.
 
 `GrowthAnalysis.indeterminate_reason` is `None` when the verdict is decisive, and otherwise one of `"neither_model_fits"`, `"ambiguous_evidence"`, or `"logistic_unidentifiable"`.
+
+`horizons`, `n_boot`, `bootstrap_confidence`, and `bootstrap_seed` control a pair-bootstrap that fills `GrowthAnalysis.logistic_intervals` with percentile intervals for the logistic `K`, `r`, and `t0`, plus one prediction interval per supplied horizon (in the original time coordinate). The bootstrap runs only when it is actually informative — when the logistic is the preferred model or the verdict is indeterminate — because the optimizer is unidentified on data that is clearly exponential and a bootstrap there would just be expensive decoration. Pass `n_boot=0` to skip the bootstrap entirely.
 
 `GrowthAnalysis.diagnostics.fit_warnings` contains optimizer or fit-process warnings, while `GrowthAnalysis.diagnostics.identifiability_warnings` contains interpretation warnings specific to whether the logistic bend is actually identified by the observed window.
 

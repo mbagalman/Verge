@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
 import numpy as np
 
 from ._diagnostics import build_diagnostics
 from ._fit import fit_exponential_model, fit_logistic_model, prepare_inputs
 from ._types import GrowthAnalysis, ModelFit
+from ._uncertainty import bootstrap_logistic_intervals
 
 
 def fit_exponential(time, values, *, min_points: int = 8) -> ModelFit:
@@ -28,6 +29,10 @@ def analyze_growth(
     prior_logistic: float = 0.5,
     min_points: int = 8,
     min_fit_quality: float = 0.85,
+    horizons: Optional[Sequence[float]] = None,
+    n_boot: int = 500,
+    bootstrap_confidence: float = 0.90,
+    bootstrap_seed: Optional[int] = None,
 ) -> GrowthAnalysis:
     normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
     _validate_priors(prior_exponential, prior_logistic)
@@ -80,6 +85,23 @@ def analyze_growth(
         "Inputs are assumed to be positive, finite, and nondecreasing.",
     )
 
+    # Bootstrap is only informative when the logistic verdict is part of the
+    # answer the user cares about. When exponential wins decisively, the
+    # logistic optimizer thrashes on every resample (K is unidentified) and
+    # the resulting CI is meaningless decoration that costs many seconds.
+    bootstrap_relevant = preferred_model == "logistic" or is_indeterminate
+    if logistic_fit.converged and n_boot > 0 and bootstrap_relevant:
+        logistic_intervals = bootstrap_logistic_intervals(
+            time,
+            values,
+            n_boot=n_boot,
+            horizons=horizons,
+            confidence=bootstrap_confidence,
+            seed=bootstrap_seed,
+        )
+    else:
+        logistic_intervals = None
+
     return GrowthAnalysis(
         p_exponential=float(p_exponential),
         p_logistic=float(p_logistic),
@@ -90,6 +112,7 @@ def analyze_growth(
         logistic_fit=logistic_fit,
         diagnostics=diagnostics,
         assumptions=assumptions,
+        logistic_intervals=logistic_intervals,
     )
 
 
