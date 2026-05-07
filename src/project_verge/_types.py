@@ -1,9 +1,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Optional, Tuple
+from typing import List, Mapping, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
+
+
+class Prediction(NamedTuple):
+    """A point prediction with bootstrap percentile bounds.
+
+    ``point`` is the analytical prediction from the preferred-model fit
+    (i.e. what you would get by plugging the fit parameters into the
+    curve formula). ``low`` and ``high`` are pair-bootstrap percentile
+    bounds at the confidence level requested in
+    :meth:`GrowthAnalysis.predict`.
+    """
+
+    low: float
+    point: float
+    high: float
 
 
 @dataclass(frozen=True)
@@ -133,6 +148,18 @@ class GrowthAnalysis:
     assumptions: Tuple[str, ...]
     logistic_intervals: Optional[BootstrapIntervals]
     weight_intervals: Optional[WeightIntervals]
+    input_time: np.ndarray
+    input_values: np.ndarray
+    time_origin: float
+
+    def __post_init__(self) -> None:
+        # Freeze the captured inputs so callers cannot mutate them out from
+        # under the result. The arrays back :meth:`predict`'s on-demand
+        # bootstrap, so silent mutation would corrupt downstream CIs.
+        for field_name in ("input_time", "input_values"):
+            arr = np.array(getattr(self, field_name), dtype=float, copy=True)
+            arr.setflags(write=False)
+            object.__setattr__(self, field_name, arr)
 
     def summary(self) -> str:
         """Return a short human-readable verdict suitable for ``print(result)``."""
@@ -145,3 +172,87 @@ class GrowthAnalysis:
 
     def __repr__(self) -> str:
         return self.summary()
+
+    def predict(
+        self,
+        time,
+        *,
+        ci: Optional[float] = 0.9,
+        n_boot: int = 200,
+        seed: Optional[int] = 0,
+    ) -> Union[float, np.ndarray, Prediction, List[Prediction]]:
+        """Predict the value of the preferred-model fit at one or more times.
+
+        ``time`` is interpreted in the same coordinate as the original input
+        (no time-origin shift required from the caller). With the default
+        ``ci=0.9`` the result is a :class:`Prediction` ``(low, point, high)``
+        whose bounds are pair-bootstrap percentile bounds at the requested
+        confidence level. Pass ``ci=None`` to get just the point estimate.
+
+        For an indeterminate verdict :meth:`predict` raises ``ValueError`` --
+        the whole point of the indeterminate branch is that we don't know
+        which model to predict from. Inspect ``exponential_fit`` /
+        ``linear_fit`` / ``logistic_fit`` directly if you want a prediction
+        from a specific candidate.
+
+        Vectorized over ``time``: a scalar input returns a scalar (or
+        :class:`Prediction`); an array input returns an ``ndarray``
+        (or list of :class:`Prediction`).
+        """
+
+        if self.is_indeterminate:
+            raise ValueError(
+                f"cannot predict from an indeterminate result "
+                f"(reason: {self.indeterminate_reason}). "
+                f"Inspect exponential_fit / linear_fit / logistic_fit "
+                f"to predict from a specific candidate model."
+            )
+
+        # Local imports avoid the _types <-> _fit / _uncertainty cycle.
+        from ._fit import exponential_curve, linear_curve, logistic_curve
+        from ._uncertainty import bootstrap_predictions
+
+        time_arr = np.asarray(time, dtype=float)
+        is_scalar = time_arr.ndim == 0
+        times = np.atleast_1d(time_arr)
+        times_norm = times - self.time_origin
+
+        if self.preferred_model == "exponential":
+            params = self.exponential_fit.parameters
+            point = exponential_curve(times_norm, params["a"], params["r"])
+        elif self.preferred_model == "linear":
+            params = self.linear_fit.parameters
+            point = linear_curve(times_norm, params["a"], params["b"])
+        elif self.preferred_model == "logistic":
+            params = self.logistic_fit.parameters
+            point = logistic_curve(
+                times_norm, params["K"], params["r"], params["t0"]
+            )
+        else:
+            raise RuntimeError(
+                f"unhandled preferred_model: {self.preferred_model!r}"
+            )
+
+        point_array = np.asarray(point, dtype=float)
+
+        if ci is None:
+            return float(point_array[0]) if is_scalar else point_array
+
+        intervals = bootstrap_predictions(
+            self.input_time,
+            self.input_values,
+            model_name=self.preferred_model,
+            prediction_times=times,
+            n_boot=n_boot,
+            confidence=ci,
+            seed=seed,
+        )
+        predictions = [
+            Prediction(
+                low=interval.low,
+                point=float(point_array[i]),
+                high=interval.high,
+            )
+            for i, interval in enumerate(intervals)
+        ]
+        return predictions[0] if is_scalar else predictions

@@ -7,10 +7,15 @@ from ._types import (
     GrowthAnalysis,
     Interval,
     ModelFit,
+    Prediction,
     SignalAgreement,
     WeightIntervals,
 )
-from ._uncertainty import bootstrap_logistic_intervals, bootstrap_model_weights
+from ._uncertainty import (
+    bootstrap_logistic_intervals,
+    bootstrap_model_weights,
+    bootstrap_predictions,
+)
 
 __all__ = [
     "BootstrapIntervals",
@@ -18,11 +23,13 @@ __all__ = [
     "GrowthAnalysis",
     "Interval",
     "ModelFit",
+    "Prediction",
     "SignalAgreement",
     "WeightIntervals",
     "analyze_growth",
     "bootstrap_logistic_intervals",
     "bootstrap_model_weights",
+    "bootstrap_predictions",
     "fit_exponential",
     "fit_linear",
     "fit_logistic",

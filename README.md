@@ -101,6 +101,20 @@ Per-capita slope: -0.002307; posterior weights: exponential 0.00 [0.00, 0.00], l
 
 The bootstrap intervals look implausibly tight here because the demo inputs are perfectly clean synthetic curves; on real noisy data they widen to reflect the true sampling uncertainty in the fit. The verdict-line CI (e.g. `90% CI [1.00, 1.00]`) is a percentile interval on the winning posterior weight itself — a wide CI here means the headline confidence is fragile under resampling. The `accelerating` and `steady` cases show no CI because bootstrap is gated to run only when the logistic verdict is the focus or the result is indeterminate. For programmatic access rather than a printed summary, every value in the rendered output is also a typed attribute on `GrowthAnalysis` — `p_exponential`, `p_linear`, `p_logistic`, `preferred_model`, `is_indeterminate`, `indeterminate_reason`, `logistic_intervals.K`, `weight_intervals.p_logistic`, etc.
 
+## Predicting future values
+
+`GrowthAnalysis.predict(time)` returns a prediction at one or more future times in the *original* time coordinate (no manual time-origin shift required). With the default `ci=0.9` it returns a `Prediction(low, point, high)` namedtuple whose bounds are pair-bootstrap percentile bounds at the requested confidence level. Pass `ci=None` for just the point.
+
+```python
+result = analyze_growth(time, values, n_boot=200, bootstrap_seed=0)
+
+result.predict(15.0)              # Prediction(low=119.78, point=119.78, high=119.78)
+result.predict(15.0, ci=None)     # 119.78
+result.predict([13.0, 15.0, 20.0])  # list of Prediction, one per horizon
+```
+
+For an indeterminate verdict `predict()` raises `ValueError` — the indeterminate branch exists precisely because no model is reliable enough to predict from. Inspect `result.exponential_fit`, `result.linear_fit`, or `result.logistic_fit` directly if you want a prediction from a specific candidate.
+
 ## API
 
 ### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, min_points=8, min_fit_quality=0.85, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`

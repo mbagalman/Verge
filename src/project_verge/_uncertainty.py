@@ -8,9 +8,11 @@ from typing import List, Optional, Sequence
 import numpy as np
 
 from ._fit import (
+    exponential_curve,
     fit_exponential_model,
     fit_linear_model,
     fit_logistic_model,
+    linear_curve,
     logistic_curve,
 )
 from ._types import BootstrapIntervals, Interval, WeightIntervals
@@ -127,6 +129,86 @@ def bootstrap_logistic_intervals(
         horizons=tuple(float(h) for h in horizons_arr),
         predicted_intervals=predicted_intervals,
     )
+
+
+def bootstrap_predictions(
+    time: Sequence[float],
+    values: Sequence[float],
+    *,
+    model_name: str,
+    prediction_times: Sequence[float],
+    n_boot: int = 200,
+    confidence: float = 0.9,
+    seed: Optional[int] = None,
+) -> List[Interval]:
+    """Pair-bootstrap percentile intervals for a single model's predictions.
+
+    Resamples ``(time, values)`` with replacement, refits the named model on
+    each resample, evaluates the fitted curve at every prediction time, and
+    returns one :class:`Interval` per prediction time. Resamples whose fit
+    fails to converge are skipped; intervals are NaN if no resample succeeds.
+    """
+
+    _validate_confidence(confidence)
+    if n_boot < 0:
+        raise ValueError("n_boot must be non-negative")
+
+    fitter, curve = _model_fitter_and_curve(model_name)
+
+    time_arr, values_arr = _prepare_bootstrap_inputs(time, values)
+    pred_times_arr = np.asarray(prediction_times, dtype=float)
+    if pred_times_arr.ndim != 1:
+        raise ValueError("prediction_times must be a one-dimensional sequence")
+
+    origin = float(time_arr[0])
+    time_norm = time_arr - origin
+    pred_times_norm = pred_times_arr - origin
+
+    rng = np.random.default_rng(seed)
+    n = len(time_norm)
+    pred_samples: List[List[float]] = [[] for _ in range(len(pred_times_norm))]
+
+    for _ in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        order = np.argsort(time_norm[idx])
+        t_boot = time_norm[idx][order]
+        y_boot = values_arr[idx][order]
+
+        try:
+            fit = fitter(t_boot, y_boot, min_points=_BOOTSTRAP_MIN_POINTS)
+        except ValueError:
+            continue
+        if not fit.converged or not fit.parameters:
+            continue
+
+        preds = curve(pred_times_norm, fit.parameters)
+        for i, p in enumerate(preds):
+            pred_samples[i].append(float(p))
+
+    return [_percentile_interval(samples, confidence) for samples in pred_samples]
+
+
+def _model_fitter_and_curve(model_name: str):
+    """Return ``(fit_function, curve_function)`` for the named model."""
+
+    if model_name == "exponential":
+        return (
+            fit_exponential_model,
+            lambda t, params: exponential_curve(t, params["a"], params["r"]),
+        )
+    if model_name == "linear":
+        return (
+            fit_linear_model,
+            lambda t, params: linear_curve(t, params["a"], params["b"]),
+        )
+    if model_name == "logistic":
+        return (
+            fit_logistic_model,
+            lambda t, params: logistic_curve(
+                t, params["K"], params["r"], params["t0"]
+            ),
+        )
+    raise ValueError(f"unsupported model_name: {model_name!r}")
 
 
 def bootstrap_model_weights(

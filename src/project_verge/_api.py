@@ -46,6 +46,11 @@ def analyze_growth(
     bootstrap_seed: Optional[int] = None,
 ) -> GrowthAnalysis:
     normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+    # ``prepare_inputs`` has validated that ``time`` is a finite, length-matched,
+    # strictly-increasing 1-D sequence, so taking ``[0]`` after the fact is safe.
+    time_origin = float(np.asarray(time, dtype=float)[0])
+    input_time_array = np.asarray(time, dtype=float)
+    input_values_array = np.asarray(values, dtype=float)
     _validate_priors(prior_exponential, prior_linear, prior_logistic)
     _validate_fit_quality(min_fit_quality)
 
@@ -148,6 +153,9 @@ def analyze_growth(
         assumptions=assumptions,
         logistic_intervals=logistic_intervals,
         weight_intervals=weight_intervals,
+        input_time=input_time_array,
+        input_values=input_values_array,
+        time_origin=time_origin,
     )
 
 
