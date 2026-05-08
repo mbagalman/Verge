@@ -37,7 +37,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — | **done** (`274eb97`) |
 | T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — | **done** (`3cdde75`) |
 | T-15 | Smoothing / noise-tolerance path for non-monotone data | P2 | M+C | M | — | **done** (`99d4ff7`) |
-| T-16 | Multi-start optimization for the logistic fit | P2 | C | S | — | open |
+| T-16 | Multi-start optimization for the logistic fit | P2 | C | S | — | **done** (`fcc8342`) |
 | T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) | open |
 | T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — | open |
 | T-19 | Calibration evidence in docs | P2 | D | M | T-17 | open |
@@ -374,7 +374,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-16: Multi-start optimization for the logistic fit
-**Category:** Code · **Effort:** S
+**Category:** Code · **Effort:** S · **Status:** Done in commit `fcc8342`
 
 **Problem.** [_fit.py:168-178](src/project_verge/_fit.py#L168-L178) uses a single heuristic initial guess; on noisy or partial-S data, the optimizer can land in local minima.
 
