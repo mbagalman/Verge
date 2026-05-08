@@ -115,7 +115,7 @@ def fit_exponential_model(
         model_name="exponential",
         parameter_names=("a", "r"),
         model_func=lambda t, p: exponential_curve(t, p[0], p[1]),
-        initial_guess=_initial_guess_exponential(time, values),
+        initial_guesses=[_initial_guess_exponential(time, values)],
         bounds=_bounds_exponential(time, values),
         min_points=min_points,
     )
@@ -126,14 +126,27 @@ def fit_logistic_model(
     values: np.ndarray,
     *,
     min_points: int,
+    n_starts: int = 1,
 ) -> ModelFit:
+    """Fit a logistic curve, optionally with multi-start optimization.
+
+    The logistic likelihood surface is multi-modal in (K, r, t0) -- in
+    particular the K bound interacts badly with partial-S data, where the
+    optimizer can land at the K upper bound from one initial guess and at
+    a much better (lower-RSS) interior point from another. Setting
+    ``n_starts > 1`` runs the optimizer from several diverse initial
+    guesses and keeps the lowest-RSS solution. The bootstrap path uses
+    the default ``n_starts=1`` because each resample is similar enough
+    to the data that single-start works and 8x cost in a 500-iteration
+    loop is wasteful.
+    """
     return _fit_model(
         time,
         values,
         model_name="logistic",
         parameter_names=("K", "r", "t0"),
         model_func=lambda t, p: logistic_curve(t, p[0], p[1], p[2]),
-        initial_guess=_initial_guess_logistic(time, values),
+        initial_guesses=_multi_start_guesses_logistic(time, values, n_starts=n_starts),
         bounds=_bounds_logistic(time, values),
         min_points=min_points,
     )
@@ -151,7 +164,7 @@ def fit_linear_model(
         model_name="linear",
         parameter_names=("a", "b"),
         model_func=lambda t, p: linear_curve(t, p[0], p[1]),
-        initial_guess=_initial_guess_linear(time, values),
+        initial_guesses=[_initial_guess_linear(time, values)],
         bounds=_bounds_linear(time, values),
         min_points=min_points,
     )
@@ -219,7 +232,7 @@ def _fit_model(
     model_name: str,
     parameter_names: Tuple[str, ...],
     model_func: Callable[[np.ndarray, np.ndarray], np.ndarray],
-    initial_guess: np.ndarray,
+    initial_guesses,
     bounds: Tuple[np.ndarray, np.ndarray],
     min_points: int,
 ) -> ModelFit:
@@ -227,48 +240,41 @@ def _fit_model(
     # so we keep the minimum-length guard here instead of relying only on prepare_inputs.
     if len(time) < min_points:
         raise ValueError(f"{model_name} fitting requires at least {min_points} points")
-
-    warnings = []
+    if len(initial_guesses) == 0:
+        raise ValueError("at least one initial guess is required")
 
     def residuals(params: np.ndarray) -> np.ndarray:
         prediction = np.clip(model_func(time, params), _TINY, None)
         return np.log(values) - np.log(prediction)
 
-    try:
-        result = least_squares(
-            residuals,
-            x0=initial_guess,
-            bounds=bounds,
-            method="trf",
-            max_nfev=20000,
-        )
-        fitted_values = np.clip(model_func(time, result.x), _TINY, None)
-        resids = np.log(values) - np.log(fitted_values)
-        rss = float(np.sum(resids**2))
-        sigma2 = max(rss / len(values), 1e-12)
-        log_likelihood = -0.5 * len(values) * (np.log(2.0 * np.pi * sigma2) + 1.0)
-        # Count the observation-noise scale parameter alongside the curve parameters
-        # so the information criteria reflect the full log-normal observation model.
-        parameter_count = len(parameter_names) + 1
-        n = len(values)
-        bic = parameter_count * np.log(n) - 2.0 * log_likelihood
-        aicc = _aicc(log_likelihood, parameter_count, n)
-        log_r_squared = _log_space_r_squared(values, rss)
-        if not result.success:
-            warnings.append(result.message)
-        return ModelFit(
-            model_name=model_name,
-            parameters={name: float(value) for name, value in zip(parameter_names, result.x)},
-            fitted_values=fitted_values,
-            log_likelihood=float(log_likelihood),
-            bic=float(bic),
-            aicc=float(aicc),
-            log_r_squared=float(log_r_squared),
-            converged=bool(result.success),
-            warnings=tuple(warnings),
-        )
-    except Exception as exc:
-        warnings.append(f"{model_name} fit failed: {exc}")
+    # Multi-start loop: run least_squares from each initial guess and keep the
+    # lowest-RSS converged solution. For ``len(initial_guesses) == 1`` this
+    # collapses to the previous single-start behaviour exactly.
+    best_result = None
+    best_rss = float("inf")
+    last_failure_message = None
+
+    for guess in initial_guesses:
+        try:
+            result = least_squares(
+                residuals,
+                x0=guess,
+                bounds=bounds,
+                method="trf",
+                max_nfev=20000,
+            )
+            fitted_values = np.clip(model_func(time, result.x), _TINY, None)
+            iter_resids = np.log(values) - np.log(fitted_values)
+            rss = float(np.sum(iter_resids ** 2))
+            if rss < best_rss:
+                best_rss = rss
+                best_result = result
+        except Exception as exc:
+            last_failure_message = f"{model_name} fit failed: {exc}"
+            continue
+
+    if best_result is None:
+        warnings = [last_failure_message] if last_failure_message else []
         return ModelFit(
             model_name=model_name,
             parameters={},
@@ -280,6 +286,33 @@ def _fit_model(
             converged=False,
             warnings=tuple(warnings),
         )
+
+    fitted_values = np.clip(model_func(time, best_result.x), _TINY, None)
+    resids = np.log(values) - np.log(fitted_values)
+    rss = float(np.sum(resids ** 2))
+    sigma2 = max(rss / len(values), 1e-12)
+    log_likelihood = -0.5 * len(values) * (np.log(2.0 * np.pi * sigma2) + 1.0)
+    # Count the observation-noise scale parameter alongside the curve parameters
+    # so the information criteria reflect the full log-normal observation model.
+    parameter_count = len(parameter_names) + 1
+    n = len(values)
+    bic = parameter_count * np.log(n) - 2.0 * log_likelihood
+    aicc = _aicc(log_likelihood, parameter_count, n)
+    log_r_squared = _log_space_r_squared(values, rss)
+    warnings = []
+    if not best_result.success:
+        warnings.append(best_result.message)
+    return ModelFit(
+        model_name=model_name,
+        parameters={name: float(value) for name, value in zip(parameter_names, best_result.x)},
+        fitted_values=fitted_values,
+        log_likelihood=float(log_likelihood),
+        bic=float(bic),
+        aicc=float(aicc),
+        log_r_squared=float(log_r_squared),
+        converged=bool(best_result.success),
+        warnings=tuple(warnings),
+    )
 
 
 def _log_space_r_squared(values: np.ndarray, rss: float) -> float:
@@ -334,9 +367,58 @@ def _initial_guess_logistic(time: np.ndarray, values: np.ndarray) -> np.ndarray:
     return np.array([carrying_capacity, growth_rate, midpoint], dtype=float)
 
 
-def _bounds_logistic(time: np.ndarray, values: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def _multi_start_guesses_logistic(
+    time: np.ndarray,
+    values: np.ndarray,
+    *,
+    n_starts: int,
+) -> list:
+    """Generate ``n_starts`` initial guesses for the logistic fit.
+
+    The first guess is always the data-driven heuristic from
+    :func:`_initial_guess_logistic`. Additional guesses sweep K across
+    geometrically-spaced multiples of the observed maximum and t0 across
+    early/late positions in the observed window, so a single bad initial
+    placement is unlikely to monopolize the multi-start ensemble.
+    """
+    if n_starts < 1:
+        raise ValueError("n_starts must be >= 1")
+    base = _initial_guess_logistic(time, values)
+    guesses = [base]
+    if n_starts == 1:
+        return guesses
+
     span = max(float(time[-1] - time[0]), 1.0)
     max_value = max(float(np.max(values)), 1.0)
+    base_r = float(base[1])
+
+    # K factors swept geometrically; t0 positions split between early and
+    # late within (and slightly past) the observed window.
+    k_factors = np.geomspace(1.5, 500.0, num=4)
+    t0_positions = [time[0] + 0.25 * span, time[0] + 0.75 * span]
+
+    for t0 in t0_positions:
+        for factor in k_factors:
+            if len(guesses) >= n_starts:
+                return guesses
+            guesses.append(
+                np.array([max_value * float(factor), base_r, float(t0)], dtype=float)
+            )
+    return guesses[:n_starts]
+
+
+def _bounds_logistic(time: np.ndarray, values: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    span = max(float(time[-1] - time[0]), 1.0)
+    # ``max_value`` here is the *raw* observed maximum: it sets the K lower
+    # bound (the carrying capacity must sit above any observed value) and
+    # scales the upper bound. A previous version floored this at 1.0 to
+    # protect against degenerate input, but the floor created an
+    # inconsistency with ``_initial_guess_logistic``: when observed values
+    # are well below 1.0 the heuristic's K_init would land *below* the
+    # floored lower bound and least_squares would refuse the start with
+    # "Initial guess is outside of provided bounds". Multi-start (T-16)
+    # surfaced this bug in the very-small-values case.
+    max_value = float(np.max(values))
     # K is the logistic ceiling, so it must remain just above the observed maximum.
     lower = np.array([max_value * (1.0 + 1e-6), 1e-12, time[0] - 4.0 * span], dtype=float)
     upper = np.array([max_value * 1e4, max(10.0, 25.0 / span), time[-1] + 4.0 * span], dtype=float)

@@ -28,9 +28,11 @@ def fit_linear(time, values, *, min_points: int = 8) -> ModelFit:
     return fit_linear_model(normalized_time, normalized_values, min_points=min_points)
 
 
-def fit_logistic(time, values, *, min_points: int = 8) -> ModelFit:
+def fit_logistic(time, values, *, min_points: int = 8, n_starts: int = 1) -> ModelFit:
     normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
-    return fit_logistic_model(normalized_time, normalized_values, min_points=min_points)
+    return fit_logistic_model(
+        normalized_time, normalized_values, min_points=min_points, n_starts=n_starts
+    )
 
 
 def fit_power_law(time, values, *, min_points: int = 8) -> ModelFit:
@@ -53,6 +55,7 @@ def analyze_growth(
     evidence_strength: str = "strong",
     allow_smoothing: bool = False,
     smoothing_window: int = 3,
+    n_starts: int = 8,
     horizons: Optional[Sequence[float]] = None,
     n_boot: int = 500,
     bootstrap_confidence: float = 0.90,
@@ -62,6 +65,7 @@ def analyze_growth(
     _validate_fit_quality(min_fit_quality)
     _validate_max_weight_ci_width(max_weight_ci_width)
     _validate_criterion(criterion)
+    _validate_n_starts(n_starts)
     winning_weight_threshold = _evidence_strength_threshold(evidence_strength)
 
     # Optional pre-fit smoothing for noisy real-world data. The smoother runs
@@ -89,7 +93,9 @@ def analyze_growth(
 
     exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
     linear_fit = fit_linear_model(normalized_time, normalized_values, min_points=min_points)
-    logistic_fit = fit_logistic_model(normalized_time, normalized_values, min_points=min_points)
+    logistic_fit = fit_logistic_model(
+        normalized_time, normalized_values, min_points=min_points, n_starts=n_starts
+    )
     power_law_fit = fit_power_law_model(normalized_time, normalized_values, min_points=min_points)
 
     weights_by_name = _posterior_model_weights(
@@ -342,6 +348,13 @@ def _validate_max_weight_ci_width(max_weight_ci_width: float) -> None:
 def _validate_criterion(criterion: str) -> None:
     if criterion not in ("aicc", "bic"):
         raise ValueError("criterion must be 'aicc' or 'bic'")
+
+
+def _validate_n_starts(n_starts: int) -> None:
+    if not isinstance(n_starts, (int, np.integer)) or isinstance(n_starts, bool):
+        raise ValueError("n_starts must be an integer")
+    if n_starts < 1:
+        raise ValueError("n_starts must be >= 1")
 
 
 # Winning-weight thresholds for the four-way model competition, mapped from
