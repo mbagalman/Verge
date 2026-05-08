@@ -1,9 +1,28 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Mapping, NamedTuple, Optional, Tuple, Union
+from typing import List, Literal, Mapping, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
+
+
+# Public type aliases. ``ModelName`` is the set of model identifiers any
+# ModelFit can carry (the four candidate models that compete on BIC/AICc).
+# ``PreferredModel`` is narrower: power-law is a diagnostic-only candidate
+# and never becomes a verdict (the gate forces ``indeterminate`` first).
+# ``IndeterminateReason`` enumerates the structured indeterminate gate
+# triggers in their precedence order. Each catches typos at type-check
+# time without changing runtime behaviour.
+ModelName = Literal["exponential", "linear", "logistic", "power_law"]
+PreferredModel = Literal["exponential", "linear", "logistic", "indeterminate"]
+IndeterminateReason = Literal[
+    "neither_model_fits",
+    "power_law_shape",
+    "ambiguous_evidence",
+    "logistic_unidentifiable",
+    "signal_disagreement",
+    "fragile_verdict",
+]
 
 
 class Prediction(NamedTuple):
@@ -52,7 +71,7 @@ class ForecastDiagnostic(NamedTuple):
 class ModelFit:
     """Stores the result of fitting a single growth model."""
 
-    model_name: str
+    model_name: ModelName
     parameters: Mapping[str, float]
     fitted_values: np.ndarray
     log_likelihood: float
@@ -171,9 +190,9 @@ class GrowthAnalysis:
     p_linear: float
     p_logistic: float
     p_power_law: float
-    preferred_model: str
+    preferred_model: PreferredModel
     is_indeterminate: bool
-    indeterminate_reason: Optional[str]
+    indeterminate_reason: Optional[IndeterminateReason]
     exponential_fit: ModelFit
     linear_fit: ModelFit
     logistic_fit: ModelFit
