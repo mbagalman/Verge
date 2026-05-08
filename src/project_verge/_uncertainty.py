@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Sequence
+from typing import List, Optional
 
 import numpy as np
+import numpy.typing as npt
 
 from ._fit import (
     exponential_curve,
@@ -27,11 +28,11 @@ _BOOTSTRAP_MIN_POINTS = 4
 
 
 def bootstrap_logistic_intervals(
-    time: Sequence[float],
-    values: Sequence[float],
+    time: npt.ArrayLike,
+    values: npt.ArrayLike,
     *,
     n_boot: int = 500,
-    horizons: Optional[Sequence[float]] = None,
+    horizons: Optional[npt.ArrayLike] = None,
     confidence: float = 0.90,
     seed: Optional[int] = None,
 ) -> BootstrapIntervals:
@@ -133,11 +134,11 @@ def bootstrap_logistic_intervals(
 
 
 def bootstrap_predictions(
-    time: Sequence[float],
-    values: Sequence[float],
+    time: npt.ArrayLike,
+    values: npt.ArrayLike,
     *,
     model_name: str,
-    prediction_times: Sequence[float],
+    prediction_times: npt.ArrayLike,
     n_boot: int = 200,
     confidence: float = 0.9,
     seed: Optional[int] = None,
@@ -213,8 +214,8 @@ def _model_fitter_and_curve(model_name: str):
 
 
 def bootstrap_model_weights(
-    time: Sequence[float],
-    values: Sequence[float],
+    time: npt.ArrayLike,
+    values: npt.ArrayLike,
     *,
     prior_exponential: float = 0.5,
     prior_linear: float = 0.5,

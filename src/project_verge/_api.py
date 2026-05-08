@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence
+from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 
 from ._diagnostics import build_diagnostics
 from ._fit import (
@@ -78,7 +79,7 @@ def analyze_growth(
     smoothing_window: int = 3,
     n_starts: int = 8,
     min_relative_range: float = 0.01,
-    horizons: Optional[Sequence[float]] = None,
+    horizons: Optional[npt.ArrayLike] = None,
     n_boot: int = 500,
     bootstrap_confidence: float = 0.90,
     bootstrap_seed: Optional[int] = None,

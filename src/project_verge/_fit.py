@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Callable, Sequence, Tuple
+from typing import Callable, Tuple
 
 import numpy as np
+import numpy.typing as npt
 from scipy.optimize import least_squares
 from scipy.special import expit
 
@@ -14,7 +15,7 @@ _TINY = np.finfo(float).tiny
 
 
 def smooth_to_monotone(
-    values: Sequence[float],
+    values: npt.ArrayLike,
     *,
     window: int = 3,
 ) -> np.ndarray:
@@ -48,8 +49,8 @@ def smooth_to_monotone(
 
 
 def prepare_inputs(
-    time: Sequence[float],
-    values: Sequence[float],
+    time: npt.ArrayLike,
+    values: npt.ArrayLike,
     *,
     min_points: int,
     min_relative_range: float = 0.01,
