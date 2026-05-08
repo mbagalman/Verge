@@ -44,6 +44,7 @@ def build_diagnostics(
     exponential_fit: ModelFit,
     linear_fit: ModelFit,
     logistic_fit: ModelFit,
+    leading_fit: ModelFit,
 ) -> Diagnostics:
     pc = _per_capita_regression(time, values)
     cv = _residual_curvature_score(time, values)
@@ -60,6 +61,13 @@ def build_diagnostics(
         ),
     )
 
+    normality_p, autocorr_p = _check_log_normal_assumptions(
+        values, leading_fit.fitted_values
+    )
+    assumption_warnings = _build_assumption_warnings(
+        normality_p, autocorr_p, leading_model_name=leading_fit.model_name
+    )
+
     return Diagnostics(
         per_capita_slope=pc.coef,
         per_capita_intercept=pc.intercept,
@@ -74,8 +82,11 @@ def build_diagnostics(
         forecast_mae_linear=float(lin_forecast_mae),
         forecast_mae_logistic=float(log_forecast_mae),
         signal_agreement=signal_agreement,
+        residual_normality_pvalue=normality_p,
+        residual_autocorr_pvalue=autocorr_p,
         fit_warnings=logistic_fit.warnings,
         identifiability_warnings=identifiability_warnings,
+        assumption_warnings=assumption_warnings,
     )
 
 
@@ -141,6 +152,99 @@ def _residual_curvature_score(time: np.ndarray, values: np.ndarray) -> _Curvatur
         t_stat=t_stat,
         p_value=p_value,
     )
+
+
+def _check_log_normal_assumptions(
+    values: np.ndarray, fitted_values: np.ndarray
+) -> Tuple[float, float]:
+    """Test the leading model's log-residuals against the package's stated
+    log-normal observation assumption.
+
+    Returns ``(normality_pvalue, autocorr_pvalue)``. Each is in ``[0, 1]`` when
+    the corresponding test was applicable, or NaN when residual variance is
+    too small for the test to be meaningful (typical of perfectly clean v1
+    inputs, where log-residuals are at floating-point noise floor).
+    """
+
+    log_values = np.log(values)
+    log_fitted = np.log(np.clip(fitted_values, np.finfo(float).tiny, None))
+    residuals = log_values - log_fitted
+    n = len(residuals)
+    nan = float("nan")
+
+    # Both tests need a non-degenerate residual distribution. Clean v1 inputs
+    # produce log-residuals dominated by numerical-optimizer noise (variance
+    # in the 1e-17 to 1e-30 range); real-data residuals on noisy inputs sit
+    # well above 1e-3. The 1e-12 floor cleanly separates the two so we
+    # don't waste tests (and emit spurious warnings) on optimizer jitter.
+    residual_var = float(np.var(residuals))
+    if residual_var <= 1e-12:
+        return nan, nan
+
+    normality_p = nan
+    if n >= 3:
+        try:
+            _, normality_p_raw = stats.shapiro(residuals)
+            normality_p = float(normality_p_raw)
+        except Exception:
+            normality_p = nan
+
+    autocorr_p = nan
+    h = min(10, max(1, n // 4))
+    if n > h + 1:
+        try:
+            autocorr_p = _ljung_box_pvalue(residuals, h)
+        except Exception:
+            autocorr_p = nan
+
+    return normality_p, autocorr_p
+
+
+def _ljung_box_pvalue(residuals: np.ndarray, h: int) -> float:
+    """Ljung-Box one-sided p-value for H0 of no autocorrelation up to lag ``h``.
+
+    Computed by hand (rather than via statsmodels) to keep the dependency
+    footprint to numpy + scipy.
+    """
+
+    n = len(residuals)
+    centered = residuals - np.mean(residuals)
+    denom = float(np.sum(centered ** 2))
+    if denom <= 0.0:
+        return float("nan")
+
+    statistic = 0.0
+    for k in range(1, h + 1):
+        autocov_k = float(np.sum(centered[:-k] * centered[k:]))
+        rho_k = autocov_k / denom
+        statistic += rho_k * rho_k / (n - k)
+    statistic *= n * (n + 2)
+    return float(stats.chi2.sf(statistic, df=h))
+
+
+def _build_assumption_warnings(
+    normality_p: float,
+    autocorr_p: float,
+    *,
+    leading_model_name: str,
+) -> Tuple[str, ...]:
+    """Format human-readable warnings when log-normal assumption tests fail."""
+
+    warnings: list = []
+    if math.isfinite(normality_p) and normality_p < _SIGNAL_SIGNIFICANCE:
+        warnings.append(
+            f"{leading_model_name} log-residuals fail Shapiro-Wilk "
+            f"(p = {normality_p:.3g}); the log-normal observation model is "
+            f"in question, so BIC/AICc weights and bootstrap intervals may "
+            f"be biased."
+        )
+    if math.isfinite(autocorr_p) and autocorr_p < _SIGNAL_SIGNIFICANCE:
+        warnings.append(
+            f"{leading_model_name} log-residuals show serial correlation "
+            f"(Ljung-Box p = {autocorr_p:.3g}); effective sample size is "
+            f"smaller than n, so the criterion penalty is too lenient."
+        )
+    return tuple(warnings)
 
 
 def _logistic_has_best_forecast(

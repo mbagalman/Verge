@@ -80,8 +80,11 @@ class Diagnostics:
     forecast_mae_linear: float
     forecast_mae_logistic: float
     signal_agreement: SignalAgreement
+    residual_normality_pvalue: float
+    residual_autocorr_pvalue: float
     fit_warnings: Tuple[str, ...] = ()
     identifiability_warnings: Tuple[str, ...] = ()
+    assumption_warnings: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

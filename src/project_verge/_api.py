@@ -84,16 +84,23 @@ def analyze_growth(
     p_logistic = weights_by_name["logistic"]
     p_power_law = weights_by_name["power_law"]
 
+    leading_model = max(weights_by_name, key=weights_by_name.__getitem__)
+    winning_weight = weights_by_name[leading_model]
+    leading_fit = {
+        "exponential": exponential_fit,
+        "linear": linear_fit,
+        "logistic": logistic_fit,
+        "power_law": power_law_fit,
+    }[leading_model]
+
     diagnostics = build_diagnostics(
         normalized_time,
         normalized_values,
         exponential_fit=exponential_fit,
         linear_fit=linear_fit,
         logistic_fit=logistic_fit,
+        leading_fit=leading_fit,
     )
-
-    leading_model = max(weights_by_name, key=weights_by_name.__getitem__)
-    winning_weight = weights_by_name[leading_model]
     all_fits_poor = (
         exponential_fit.log_r_squared < min_fit_quality
         and linear_fit.log_r_squared < min_fit_quality

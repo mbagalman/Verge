@@ -27,6 +27,7 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
   - `fragile_verdict` — BIC favors a single model but the bootstrap CI on its weight is wider than `max_weight_ci_width` (default 0.40), meaning the verdict could swap under resampling
 - A `Diagnostics.signal_agreement` flag set giving the three supporting signals individually, plus `levelling_off_votes` (0–3) for the aggregate.
 - A `weight_intervals` field on the result with bootstrap percentile intervals on `p_exponential`, `p_linear`, and `p_logistic` so the headline confidence number itself comes with a confidence interval.
+- Automatic checks of the log-normal observation assumption: Shapiro-Wilk on the leading-model log-residuals and Ljung-Box for serial correlation, with `Diagnostics.residual_normality_pvalue`, `Diagnostics.residual_autocorr_pvalue`, and human-readable `Diagnostics.assumption_warnings` when either p-value drops below 0.05.
 - Supporting diagnostics: per-capita growth slope, log-residual curvature, and forward-chaining one-step forecast error for each candidate model.
 
 ## What v1 does not answer
@@ -179,7 +180,7 @@ Runs the full analysis and returns a `GrowthAnalysis` object.
 
 `horizons`, `n_boot`, `bootstrap_confidence`, and `bootstrap_seed` control a pair-bootstrap that fills `GrowthAnalysis.logistic_intervals` with percentile intervals for the logistic `K`, `r`, and `t0`, plus one prediction interval per supplied horizon (in the original time coordinate). The bootstrap runs only when it is actually informative — when the logistic is the preferred model or the verdict is indeterminate — because the optimizer is unidentified on data that is clearly exponential and a bootstrap there would just be expensive decoration. Pass `n_boot=0` to skip the bootstrap entirely.
 
-`GrowthAnalysis.diagnostics.fit_warnings` contains optimizer or fit-process warnings, while `GrowthAnalysis.diagnostics.identifiability_warnings` contains interpretation warnings specific to whether the logistic bend is actually identified by the observed window.
+`GrowthAnalysis.diagnostics.fit_warnings` contains optimizer or fit-process warnings; `GrowthAnalysis.diagnostics.identifiability_warnings` contains interpretation warnings specific to whether the logistic bend is actually identified by the observed window; `GrowthAnalysis.diagnostics.assumption_warnings` contains warnings from the log-normal residual checks (Shapiro-Wilk normality and Ljung-Box autocorrelation tests on the leading-model log-residuals). The assumption checks are automatically skipped when residuals are at the floating-point floor (clean synthetic inputs), so they do not over-fire on optimizer noise.
 
 ### `fit_exponential(time, values, *, min_points=8)`
 
