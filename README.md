@@ -172,7 +172,7 @@ Run it yourself with `python examples/world_population.py` to see the side-by-si
 
 ## API
 
-### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, criterion="aicc", evidence_strength="strong", horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
+### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, criterion="aicc", evidence_strength="strong", allow_smoothing=False, smoothing_window=3, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
@@ -191,6 +191,8 @@ Runs the full analysis and returns a `GrowthAnalysis` object.
 | `"decisive"` | ≥ 0.99 | ≥ ~10 | "decisive" |
 
 Below the threshold the verdict is forced to `indeterminate (reason: ambiguous_evidence)`. The default `"strong"` is intentionally conservative: a leading weight of 0.85 is *suggestive* of accelerating / leveling off / steady, but it is not a verdict you should bet on, and Verge says so. Pass `evidence_strength="positive"` if you want the looser threshold; pass `"decisive"` if you want only very-high-confidence verdicts.
+
+`allow_smoothing` opens Verge to noisy real-world data. With the default `False`, the v1 input contract requires strict nondecreasing values and any downward blip raises `ValueError`. Setting `allow_smoothing=True` runs a rolling-median smoother (window `smoothing_window`, default 3) followed by a cumulative-max pass that enforces the nondecreasing post-condition the rest of the library assumes. The smoothed series — not the raw input — is what gets stored on `result.input_values`, what `predict()` and `plot()` see, and what the bootstrap resamples; this keeps the entire analysis in one consistent coordinate. The transformation is recorded in `result.transform_log` so the action is auditable. Trade-off: a *genuine* downward move in the underlying process is mapped to a flat segment by `cumulative-max`, biasing the fit upward — for series where you expect occasional real dips, do your own pre-processing instead.
 
 `horizons`, `n_boot`, `bootstrap_confidence`, and `bootstrap_seed` control a pair-bootstrap that fills `GrowthAnalysis.logistic_intervals` with percentile intervals for the logistic `K`, `r`, and `t0`, plus one prediction interval per supplied horizon (in the original time coordinate). The bootstrap runs only when it is actually informative — when the logistic is the preferred model or the verdict is indeterminate — because the optimizer is unidentified on data that is clearly exponential and a bootstrap there would just be expensive decoration. Pass `n_boot=0` to skip the bootstrap entirely.
 
@@ -254,9 +256,9 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 
 **Signature.** Real-world noisy data where some adjacent observations have `y_{i+1} < y_i`.
 
-**Library response.** Hard `ValueError("values must be nondecreasing for the v1 API")` from input validation.
+**Library response.** By default, hard `ValueError("values must be nondecreasing for the v1 API")` from input validation. Pass `allow_smoothing=True` and Verge runs a rolling-median plus cumulative-max smoother to coerce the input to monotone before fitting.
 
-**Mitigation.** Pre-smooth with a rolling median or LOWESS before passing to Verge. A built-in `allow_smoothing` option is on the backlog ([T-15](TICKETS.md)).
+**Mitigation.** Use `analyze_growth(time, values, allow_smoothing=True)`. The transformation is recorded in `result.transform_log` so the action is auditable. The smoother is parameter-free aside from `smoothing_window` (default 3, must be a positive odd integer); for very noisy data try `smoothing_window=5`. The trade-off is that genuine real-world *decreases* in the underlying process are flattened by `cumulative-max` — if your data has real dips you want preserved, do your own pre-processing.
 
 ### Non-positive values
 

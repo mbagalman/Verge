@@ -12,6 +12,7 @@ from ._fit import (
     fit_logistic_model,
     fit_power_law_model,
     prepare_inputs,
+    smooth_to_monotone,
 )
 from ._types import GrowthAnalysis, ModelFit, SignalAgreement, WeightIntervals
 from ._uncertainty import bootstrap_logistic_intervals, bootstrap_model_weights
@@ -50,22 +51,41 @@ def analyze_growth(
     max_weight_ci_width: float = 0.40,
     criterion: str = "aicc",
     evidence_strength: str = "strong",
+    allow_smoothing: bool = False,
+    smoothing_window: int = 3,
     horizons: Optional[Sequence[float]] = None,
     n_boot: int = 500,
     bootstrap_confidence: float = 0.90,
     bootstrap_seed: Optional[int] = None,
 ) -> GrowthAnalysis:
-    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
-    # ``prepare_inputs`` has validated that ``time`` is a finite, length-matched,
-    # strictly-increasing 1-D sequence, so taking ``[0]`` after the fact is safe.
-    time_origin = float(np.asarray(time, dtype=float)[0])
-    input_time_array = np.asarray(time, dtype=float)
-    input_values_array = np.asarray(values, dtype=float)
     _validate_priors(prior_exponential, prior_linear, prior_logistic, prior_power_law)
     _validate_fit_quality(min_fit_quality)
     _validate_max_weight_ci_width(max_weight_ci_width)
     _validate_criterion(criterion)
     winning_weight_threshold = _evidence_strength_threshold(evidence_strength)
+
+    # Optional pre-fit smoothing for noisy real-world data. The smoother runs
+    # before prepare_inputs, so ``values`` and ``input_values_array`` below
+    # both reflect the smoothed series; this is the array predict() and
+    # plot() will see, since it's what was actually fit.
+    transform_log = []
+    values_for_fitting = values
+    if allow_smoothing:
+        smoothed = smooth_to_monotone(values, window=smoothing_window)
+        values_for_fitting = smoothed
+        transform_log.append(
+            f"Pre-fit rolling-median smoothing (window={smoothing_window}) "
+            f"with cumulative-max applied to enforce the nondecreasing contract."
+        )
+
+    normalized_time, normalized_values = prepare_inputs(
+        time, values_for_fitting, min_points=min_points
+    )
+    # ``prepare_inputs`` has validated that ``time`` is a finite, length-matched,
+    # strictly-increasing 1-D sequence, so taking ``[0]`` after the fact is safe.
+    time_origin = float(np.asarray(time, dtype=float)[0])
+    input_time_array = np.asarray(time, dtype=float)
+    input_values_array = np.asarray(values_for_fitting, dtype=float)
 
     exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
     linear_fit = fit_linear_model(normalized_time, normalized_values, min_points=min_points)
@@ -145,9 +165,14 @@ def analyze_growth(
     # the resulting CI is meaningless decoration that costs many seconds.
     bootstrap_relevant = preferred_model == "logistic" or is_indeterminate
     if logistic_fit.converged and n_boot > 0 and bootstrap_relevant:
+        # Bootstrap uses the smoothed values when smoothing was applied, so
+        # the resampled fits live in the same coordinate system as the main
+        # analysis. Otherwise the weight CIs would be computed on noisy raw
+        # data while the headline fits sit on the smoothed series, and the
+        # two would disagree.
         logistic_intervals = bootstrap_logistic_intervals(
             time,
-            values,
+            values_for_fitting,
             n_boot=n_boot,
             horizons=horizons,
             confidence=bootstrap_confidence,
@@ -155,7 +180,7 @@ def analyze_growth(
         )
         weight_intervals = bootstrap_model_weights(
             time,
-            values,
+            values_for_fitting,
             prior_exponential=prior_exponential,
             prior_linear=prior_linear,
             prior_logistic=prior_logistic,
@@ -199,6 +224,7 @@ def analyze_growth(
         input_time=input_time_array,
         input_values=input_values_array,
         time_origin=time_origin,
+        transform_log=tuple(transform_log),
     )
 
 

@@ -158,6 +158,7 @@ class GrowthAnalysis:
     input_time: np.ndarray
     input_values: np.ndarray
     time_origin: float
+    transform_log: Tuple[str, ...]
 
     def __post_init__(self) -> None:
         # Freeze the captured inputs so callers cannot mutate them out from

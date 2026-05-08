@@ -13,6 +13,40 @@ ArrayPair = Tuple[np.ndarray, np.ndarray]
 _TINY = np.finfo(float).tiny
 
 
+def smooth_to_monotone(
+    values: Sequence[float],
+    *,
+    window: int = 3,
+) -> np.ndarray:
+    """Rolling-median smoother followed by cumulative-max enforcement.
+
+    The rolling median dampens small noisy excursions; the cumulative-max
+    pass guarantees the result satisfies Verge's nondecreasing input
+    contract. The combination is parameter-free aside from ``window``,
+    robust to point outliers (median is breakdown 50%), and produces
+    output of the same length as the input.
+
+    Trade-off: a genuine real-world *decrease* in the underlying process
+    is mapped to a flat segment by ``cumulative-max``, biasing the fit
+    upward. For series where you expect occasional dips that should be
+    preserved, do your own pre-processing rather than relying on this
+    helper.
+    """
+    if window < 1 or window % 2 == 0:
+        raise ValueError("smoothing window must be a positive odd integer")
+    arr = np.asarray(values, dtype=float)
+    if arr.ndim != 1:
+        raise ValueError("values must be a one-dimensional sequence")
+    n = len(arr)
+    half = window // 2
+    smoothed = np.empty(n, dtype=float)
+    for i in range(n):
+        lo = max(0, i - half)
+        hi = min(n, i + half + 1)
+        smoothed[i] = float(np.median(arr[lo:hi]))
+    return np.maximum.accumulate(smoothed)
+
+
 def prepare_inputs(
     time: Sequence[float],
     values: Sequence[float],
