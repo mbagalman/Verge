@@ -35,7 +35,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-28 | Auto-downgrade verdict on wide weight CI (catches random-walk fragility) | P1 | M+C | S | T-07 | **done** (`ecab902`) |
 | T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | **done** (`d3194f3`) |
 | T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — | **done** (`274eb97`) |
-| T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — | open |
+| T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — | **done** (`3cdde75`) |
 | T-15 | Smoothing / noise-tolerance path for non-monotone data | P2 | M+C | M | — | open |
 | T-16 | Multi-start optimization for the logistic fit | P2 | C | S | — | open |
 | T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) | open |
@@ -339,7 +339,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-14: Tie indeterminate threshold to documented evidence bands
-**Category:** Methodology · **Effort:** S
+**Category:** Methodology · **Effort:** S · **Status:** Done in commit `3cdde75`
 
 **Problem.** The 0.70 cutoff in [_api.py:53](src/project_verge/_api.py#L53) is a magic number that corresponds to roughly ΔBIC ≈ 1.7 — Kass & Raftery's "barely worth mentioning" band.
 
