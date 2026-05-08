@@ -39,14 +39,33 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
 
 ## Installation
 
+Project Verge is not yet published to PyPI; install from the source repository for now.
+
+To grab the current `main`:
+
 ```bash
-pip install project-verge
+git clone https://github.com/mbagalman/Verge.git
+cd Verge
+python3 -m pip install -e .
 ```
 
-For local development, install the package in editable mode before running tests or examples:
+To pin a specific release without cloning:
+
+```bash
+pip install git+https://github.com/mbagalman/Verge.git@v0.1.0
+```
+
+For local development (tests, lint, plotting helper):
 
 ```bash
 python3 -m pip install -e '.[dev]'
+```
+
+When the package is published to PyPI the standard install will become:
+
+```bash
+pip install project-verge            # core
+pip install 'project-verge[plot]'    # with the optional matplotlib helper
 ```
 
 ## Quick Start
