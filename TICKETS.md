@@ -33,7 +33,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-11 | Real-data example (UN population) | P1 | D | S | — | **done** (`d81238d`) |
 | T-27 | Power-law shape detection (catches polynomial misclassification) | P1 | M | M | T-01 | **done** (`9e63106`) |
 | T-28 | Auto-downgrade verdict on wide weight CI (catches random-walk fragility) | P1 | M+C | S | T-07 | **done** (`ecab902`) |
-| T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | open |
+| T-12 | AICc instead of (or alongside) BIC | P2 | M | S | — | **done** (`d3194f3`) |
 | T-13 | Log-normal assumption checks (Shapiro-Wilk, Ljung-Box) | P2 | M | S | — | open |
 | T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — | open |
 | T-15 | Smoothing / noise-tolerance path for non-monotone data | P2 | M+C | M | — | open |
@@ -306,7 +306,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ## P2 — Robustness and quality
 
 ### T-12: AICc instead of (or alongside) BIC
-**Category:** Methodology · **Effort:** S
+**Category:** Methodology · **Effort:** S · **Status:** Done in commit `d3194f3`
 
 **Problem.** With n typically 8–30, BIC's asymptotic regularity is shaky and it over-penalizes the logistic. AICc has explicit small-sample correction.
 
