@@ -347,6 +347,7 @@ Plain-English definitions for the statistics terms used here — *posterior weig
 - `docs/glossary.md`: plain-English definitions for the statistics terms in the API
 - `PROJECT_PLAN.md`: project plan and decision log
 - `TICKETS.md`: prioritized backlog of methodology, code, and docs work
+- `CHANGELOG.md`: notable user-visible changes, in Keep-a-Changelog format
 
 ## Development
 
