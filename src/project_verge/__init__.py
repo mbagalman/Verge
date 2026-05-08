@@ -8,6 +8,7 @@ from ._api import (
     fit_power_law,
 )
 from ._types import (
+    AnalysisAssumptions,
     BootstrapIntervals,
     Diagnostics,
     ForecastDiagnostic,
@@ -28,6 +29,7 @@ from ._uncertainty import (
 )
 
 __all__ = [
+    "AnalysisAssumptions",
     "BootstrapIntervals",
     "Diagnostics",
     "ForecastDiagnostic",

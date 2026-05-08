@@ -15,7 +15,13 @@ from ._fit import (
     prepare_inputs,
     smooth_to_monotone,
 )
-from ._types import GrowthAnalysis, ModelFit, SignalAgreement, WeightIntervals
+from ._types import (
+    AnalysisAssumptions,
+    GrowthAnalysis,
+    ModelFit,
+    SignalAgreement,
+    WeightIntervals,
+)
 from ._uncertainty import bootstrap_logistic_intervals, bootstrap_model_weights
 
 
@@ -185,11 +191,11 @@ def analyze_growth(
     is_indeterminate = indeterminate_reason is not None
     preferred_model = "indeterminate" if is_indeterminate else leading_model
 
-    assumptions = (
-        "The comparison is limited to exponential and logistic growth.",
-        "Likelihood is computed under a shared log-normal observation model.",
-        "Posterior probabilities are approximated from BIC with user-specified priors.",
-        "Inputs are assumed to be positive, finite, and nondecreasing.",
+    assumptions = AnalysisAssumptions(
+        criterion=criterion,
+        evidence_strength=evidence_strength,
+        candidate_models=("exponential", "linear", "logistic", "power_law"),
+        observation_model="log_normal",
     )
 
     # Bootstrap is only informative when the logistic verdict is part of the

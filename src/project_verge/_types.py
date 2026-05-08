@@ -183,6 +183,38 @@ class WeightIntervals:
 
 
 @dataclass(frozen=True)
+class AnalysisAssumptions:
+    """Methodological choices baked into a single :func:`analyze_growth` call.
+
+    These are the dials Verge actually turned, recorded so a downstream
+    consumer can reproduce or audit the analysis without having to remember
+    which arguments were passed. The prose explanation of *why* each default
+    was chosen lives in the README and the function docstring; this
+    dataclass is the runtime record of *which* values were used.
+
+    Fields that vary per call:
+
+    * ``criterion`` -- the information criterion used for the four-way
+      model competition: ``"aicc"`` (default) or ``"bic"``.
+    * ``evidence_strength`` -- the named band the leading-weight threshold
+      came from: ``"positive"``, ``"strong"`` (default), or ``"decisive"``.
+
+    Fields fixed in v1 (recorded so future versions can change them
+    without breaking forward consumers):
+
+    * ``candidate_models`` -- the model identifiers that competed for
+      posterior weight. Always all four in v1.
+    * ``observation_model`` -- the noise model assumed when computing
+      log-likelihoods. Always ``"log_normal"`` in v1.
+    """
+
+    criterion: str
+    evidence_strength: str
+    candidate_models: Tuple[str, ...]
+    observation_model: str
+
+
+@dataclass(frozen=True)
 class GrowthAnalysis:
     """End-to-end result returned by :func:`analyze_growth`."""
 
@@ -198,7 +230,7 @@ class GrowthAnalysis:
     logistic_fit: ModelFit
     power_law_fit: ModelFit
     diagnostics: Diagnostics
-    assumptions: Tuple[str, ...]
+    assumptions: AnalysisAssumptions
     logistic_intervals: Optional[BootstrapIntervals]
     weight_intervals: Optional[WeightIntervals]
     input_time: np.ndarray
