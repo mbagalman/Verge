@@ -172,7 +172,7 @@ Run it yourself with `python examples/world_population.py` to see the side-by-si
 
 ## API
 
-### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, criterion="aicc", evidence_strength="strong", allow_smoothing=False, smoothing_window=3, n_starts=8, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
+### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, criterion="aicc", evidence_strength="strong", allow_smoothing=False, smoothing_window=3, n_starts=8, min_relative_range=0.01, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
@@ -195,6 +195,8 @@ Below the threshold the verdict is forced to `indeterminate (reason: ambiguous_e
 `allow_smoothing` opens Verge to noisy real-world data. With the default `False`, the v1 input contract requires strict nondecreasing values and any downward blip raises `ValueError`. Setting `allow_smoothing=True` runs a rolling-median smoother (window `smoothing_window`, default 3) followed by a cumulative-max pass that enforces the nondecreasing post-condition the rest of the library assumes. The smoothed series — not the raw input — is what gets stored on `result.input_values`, what `predict()` and `plot()` see, and what the bootstrap resamples; this keeps the entire analysis in one consistent coordinate. The transformation is recorded in `result.transform_log` so the action is auditable. Trade-off: a *genuine* downward move in the underlying process is mapped to a flat segment by `cumulative-max`, biasing the fit upward — for series where you expect occasional real dips, do your own pre-processing instead.
 
 `n_starts` controls the multi-start optimization on the logistic fit only (other models have well-behaved likelihood surfaces and don't need it). The optimizer is run from `n_starts` diverse initial guesses sweeping across plausible K and `t0` values, and the lowest-RSS solution wins. Default 8. The bootstrap path inside `analyze_growth` always uses single-start because each resample is similar enough to the data that multi-start would just multiply the bootstrap cost without finding meaningfully better fits. Multi-start matters most for pathological cases where the inflection sits well outside the observed window with a high growth rate — single-start can land in a worse local minimum there. Pass `n_starts=1` to opt out for performance.
+
+`min_relative_range` is an up-front scope check: data is rejected with `ValueError` if `(max(values) - min(values)) / max(values)` falls below this threshold. The default `0.01` rejects series that span less than 1% of their maximum — there's no real growth signal in such data and Verge's growth-vs-leveling-off question is ill-posed on it. Pass `0` to disable the check; pass a larger value to require a more substantial growth signal before fitting.
 
 `horizons`, `n_boot`, `bootstrap_confidence`, and `bootstrap_seed` control a pair-bootstrap that fills `GrowthAnalysis.logistic_intervals` with percentile intervals for the logistic `K`, `r`, and `t0`, plus one prediction interval per supplied horizon (in the original time coordinate). The bootstrap runs only when it is actually informative — when the logistic is the preferred model or the verdict is indeterminate — because the optimizer is unidentified on data that is clearly exponential and a bootstrap there would just be expensive decoration. Pass `n_boot=0` to skip the bootstrap entirely.
 
@@ -277,9 +279,17 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 
 **Signature.** Real-world noisy data where some adjacent observations have `y_{i+1} < y_i`.
 
-**Library response.** By default, hard `ValueError("values must be nondecreasing for the v1 API")` from input validation. Pass `allow_smoothing=True` and Verge runs a rolling-median plus cumulative-max smoother to coerce the input to monotone before fitting.
+**Library response.** By default, hard `ValueError` whose message frames the rejection as a scope issue ("Verge analyzes growth, not decline; a decreasing series is outside its scope") and points at the smoothing escape hatch. Pass `allow_smoothing=True` and Verge runs a rolling-median plus cumulative-max smoother to coerce the input to monotone before fitting.
 
 **Mitigation.** Use `analyze_growth(time, values, allow_smoothing=True)`. The transformation is recorded in `result.transform_log` so the action is auditable. The smoother is parameter-free aside from `smoothing_window` (default 3, must be a positive odd integer); for very noisy data try `smoothing_window=5`. The trade-off is that genuine real-world *decreases* in the underlying process are flattened by `cumulative-max` — if your data has real dips you want preserved, do your own pre-processing.
+
+### Flat data with no growth signal
+
+**Signature.** Data where `(max(values) - min(values)) / max(values)` is below 1% — the values barely move across the observed window.
+
+**Library response.** Hard `ValueError("no growth signal detected: values span only X% of their maximum (threshold 1.00%)...")` from input validation. The growth-vs-leveling-off question Verge exists to answer is ill-posed when there is no growth to analyze; rejecting up front is more honest than fitting trivial-parameter models to no signal and reporting whichever wins on numerical artifact.
+
+**Mitigation.** If your data really is flat, Verge has nothing useful to say — that's the answer. If you have a slowly-growing series that happens to fall just below the 1% threshold, lower the bar with `min_relative_range=0.001` or disable the check entirely with `min_relative_range=0`.
 
 ### Non-positive values
 

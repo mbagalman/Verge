@@ -18,25 +18,46 @@ from ._types import GrowthAnalysis, ModelFit, SignalAgreement, WeightIntervals
 from ._uncertainty import bootstrap_logistic_intervals, bootstrap_model_weights
 
 
-def fit_exponential(time, values, *, min_points: int = 8) -> ModelFit:
-    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+def fit_exponential(
+    time, values, *, min_points: int = 8, min_relative_range: float = 0.01
+) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(
+        time, values, min_points=min_points, min_relative_range=min_relative_range
+    )
     return fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
 
 
-def fit_linear(time, values, *, min_points: int = 8) -> ModelFit:
-    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+def fit_linear(
+    time, values, *, min_points: int = 8, min_relative_range: float = 0.01
+) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(
+        time, values, min_points=min_points, min_relative_range=min_relative_range
+    )
     return fit_linear_model(normalized_time, normalized_values, min_points=min_points)
 
 
-def fit_logistic(time, values, *, min_points: int = 8, n_starts: int = 1) -> ModelFit:
-    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+def fit_logistic(
+    time,
+    values,
+    *,
+    min_points: int = 8,
+    n_starts: int = 1,
+    min_relative_range: float = 0.01,
+) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(
+        time, values, min_points=min_points, min_relative_range=min_relative_range
+    )
     return fit_logistic_model(
         normalized_time, normalized_values, min_points=min_points, n_starts=n_starts
     )
 
 
-def fit_power_law(time, values, *, min_points: int = 8) -> ModelFit:
-    normalized_time, normalized_values = prepare_inputs(time, values, min_points=min_points)
+def fit_power_law(
+    time, values, *, min_points: int = 8, min_relative_range: float = 0.01
+) -> ModelFit:
+    normalized_time, normalized_values = prepare_inputs(
+        time, values, min_points=min_points, min_relative_range=min_relative_range
+    )
     return fit_power_law_model(normalized_time, normalized_values, min_points=min_points)
 
 
@@ -56,6 +77,7 @@ def analyze_growth(
     allow_smoothing: bool = False,
     smoothing_window: int = 3,
     n_starts: int = 8,
+    min_relative_range: float = 0.01,
     horizons: Optional[Sequence[float]] = None,
     n_boot: int = 500,
     bootstrap_confidence: float = 0.90,
@@ -66,6 +88,7 @@ def analyze_growth(
     _validate_max_weight_ci_width(max_weight_ci_width)
     _validate_criterion(criterion)
     _validate_n_starts(n_starts)
+    _validate_min_relative_range(min_relative_range)
     winning_weight_threshold = _evidence_strength_threshold(evidence_strength)
 
     # Optional pre-fit smoothing for noisy real-world data. The smoother runs
@@ -83,7 +106,10 @@ def analyze_growth(
         )
 
     normalized_time, normalized_values = prepare_inputs(
-        time, values_for_fitting, min_points=min_points
+        time,
+        values_for_fitting,
+        min_points=min_points,
+        min_relative_range=min_relative_range,
     )
     # ``prepare_inputs`` has validated that ``time`` is a finite, length-matched,
     # strictly-increasing 1-D sequence, so taking ``[0]`` after the fact is safe.
@@ -355,6 +381,15 @@ def _validate_n_starts(n_starts: int) -> None:
         raise ValueError("n_starts must be an integer")
     if n_starts < 1:
         raise ValueError("n_starts must be >= 1")
+
+
+def _validate_min_relative_range(min_relative_range: float) -> None:
+    if not math.isfinite(min_relative_range):
+        raise ValueError("min_relative_range must be finite")
+    if min_relative_range < 0.0 or min_relative_range >= 1.0:
+        raise ValueError(
+            "min_relative_range must be in the half-open interval [0, 1)"
+        )
 
 
 # Winning-weight thresholds for the four-way model competition, mapped from

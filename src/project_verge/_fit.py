@@ -52,8 +52,17 @@ def prepare_inputs(
     values: Sequence[float],
     *,
     min_points: int,
+    min_relative_range: float = 0.01,
 ) -> ArrayPair:
-    """Validate the user-facing data contract and normalize time to zero."""
+    """Validate the user-facing data contract and normalize time to zero.
+
+    ``min_relative_range`` rejects data with no meaningful growth signal:
+    if ``(max(values) - min(values)) / max(values) < min_relative_range``,
+    the growth-vs-leveling-off question Verge exists to answer is
+    ill-posed and the result would be a numerical artifact of which
+    trivial-parameter fit wins on no information. Pass ``0`` to disable
+    the check.
+    """
 
     time_array = np.asarray(time, dtype=float)
     value_array = np.asarray(values, dtype=float)
@@ -71,7 +80,22 @@ def prepare_inputs(
     if np.any(value_array <= 0.0):
         raise ValueError("values must be strictly positive")
     if np.any(np.diff(value_array) < 0.0):
-        raise ValueError("values must be nondecreasing for the v1 API")
+        raise ValueError(
+            "values are decreasing in places; Verge analyzes growth, not "
+            "decline, so a decreasing series is outside its scope. Pass "
+            "allow_smoothing=True to coerce noisy nondecreasing data."
+        )
+    if min_relative_range > 0.0:
+        max_value = float(np.max(value_array))
+        observed_range = max_value - float(np.min(value_array))
+        if max_value > 0.0 and (observed_range / max_value) < min_relative_range:
+            raise ValueError(
+                f"no growth signal detected: values span only "
+                f"{(observed_range / max_value):.4%} of their maximum "
+                f"(threshold {min_relative_range:.2%}). Verge's "
+                f"growth-vs-leveling-off question is ill-posed on data "
+                f"this flat. Pass min_relative_range=0 to disable this check."
+            )
 
     normalized_time = time_array - time_array[0]
     return normalized_time, value_array
