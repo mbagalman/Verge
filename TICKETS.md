@@ -40,7 +40,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-16 | Multi-start optimization for the logistic fit | P2 | C | S | — | **done** (`fcc8342`) |
 | T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) | **done** (`eff41d2`) |
 | T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — | **done** (`0509163`) |
-| T-19 | Calibration evidence in docs | P2 | D | M | T-17 | open |
+| T-19 | Calibration evidence in docs | P2 | D | M | T-17 | **done** (`904907e`) |
 | T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | open |
 | T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | open |
 | T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | open |
@@ -424,7 +424,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-19: Calibration evidence in docs
-**Category:** Docs · **Effort:** M · **Depends on:** T-17
+**Category:** Docs · **Effort:** M · **Depends on:** T-17 · **Status:** Done in commit `904907e`
 
 **Problem.** Headline number is a probability with no calibration evidence.
 
