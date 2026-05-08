@@ -42,7 +42,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — | **done** (`0509163`) |
 | T-19 | Calibration evidence in docs | P2 | D | M | T-17 | **done** (`904907e`) |
 | T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | **done** (`993bc56`) |
-| T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | open |
+| T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | **done** (`e860e42`) |
 | T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | open |
 | T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | open |
 | T-24 | Glossary in docs | P3 | D | S | — | open |
@@ -451,7 +451,7 @@ Replace `str` annotations on [_types.py:13](src/project_verge/_types.py#L13) and
 ---
 
 ### T-21: `npt.ArrayLike` type hints
-**Category:** Code · **Effort:** S
+**Category:** Code · **Effort:** S · **Status:** Done in commit `e860e42`
 
 `Sequence[float]` in [_fit.py:17-18](src/project_verge/_fit.py#L17-L18) admits strings and isn't the numpy convention. Switch to `numpy.typing.ArrayLike`.
 
