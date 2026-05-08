@@ -39,7 +39,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-15 | Smoothing / noise-tolerance path for non-monotone data | P2 | M+C | M | — | **done** (`99d4ff7`) |
 | T-16 | Multi-start optimization for the logistic fit | P2 | C | S | — | **done** (`fcc8342`) |
 | T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) | **done** (`eff41d2`) |
-| T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — | open |
+| T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — | **done** (`0509163`) |
 | T-19 | Calibration evidence in docs | P2 | D | M | T-17 | open |
 | T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | open |
 | T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | open |
@@ -409,7 +409,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-18: Better `forecast_mae` aggregator
-**Category:** Code · **Effort:** S
+**Category:** Code · **Effort:** S · **Status:** Done in commit `0509163`
 
 **Problem.** [_diagnostics.py:59-94](src/project_verge/_diagnostics.py#L59-L94) returns `inf` if any single rolling fit fails to converge — destroying signal from the converged forecasts.
 
