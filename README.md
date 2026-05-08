@@ -334,6 +334,8 @@ They should be read as model-comparison evidence, not as a universal forecast pr
 
 Bootstrap intervals on `K`, `t0`, and prediction horizons are pair-bootstrap percentile intervals at the configured confidence level (default 90%). They quantify how much the logistic fit moves under resampling. A wide interval when the logistic is the preferred verdict is a load-bearing honesty signal — it means the data does not yet pin down where the plateau is — not a bug.
 
+Plain-English definitions for the statistics terms used here — *posterior weight, BIC vs AICc, log-normal observation model, identifiability, carrying capacity, indeterminate*, and a couple dozen others — live in [docs/glossary.md](docs/glossary.md).
+
 ## Repository Layout
 
 - `src/project_verge/`: library source
@@ -342,6 +344,7 @@ Bootstrap intervals on `K`, `t0`, and prediction horizons are pair-bootstrap per
 - `examples/demo_plot.py`: matplotlib visualization demo
 - `examples/world_population.py` (+ `examples/data/un_population.csv`): real-data worked example on world population
 - `docs/methodology.md`: design notebook walking through the diagnostic intuitions
+- `docs/glossary.md`: plain-English definitions for the statistics terms in the API
 - `PROJECT_PLAN.md`: project plan and decision log
 - `TICKETS.md`: prioritized backlog of methodology, code, and docs work
 
