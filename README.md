@@ -28,7 +28,7 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
 - A `Diagnostics.signal_agreement` flag set giving the three supporting signals individually, plus `levelling_off_votes` (0–3) for the aggregate.
 - A `weight_intervals` field on the result with bootstrap percentile intervals on `p_exponential`, `p_linear`, and `p_logistic` so the headline confidence number itself comes with a confidence interval.
 - Automatic checks of the log-normal observation assumption: Shapiro-Wilk on the leading-model log-residuals and Ljung-Box for serial correlation, with `Diagnostics.residual_normality_pvalue`, `Diagnostics.residual_autocorr_pvalue`, and human-readable `Diagnostics.assumption_warnings` when either p-value drops below 0.05.
-- Supporting diagnostics: per-capita growth slope, log-residual curvature, and forward-chaining one-step forecast error for each candidate model.
+- Supporting diagnostics: per-capita growth slope, log-residual curvature, and forward-chaining one-step forecast error (median + convergence-rate, on `Diagnostics.forecast_exponential` / `forecast_linear` / `forecast_logistic`) for each candidate model.
 
 ## What v1 does not answer
 
@@ -87,13 +87,13 @@ Output:
 Verdict: leveling off (logistic, 1.00 confidence; 90% CI [1.00, 1.00]).
 Estimated ceiling K ~= 120 [120, 120].
 Estimated inflection time ~= 6 [6, 6].
-Per-capita slope: -0.0075; forecast log-MAE (logistic): 6.29e-15.
+Per-capita slope: -0.0075; forecast log-MAE median (logistic): 2.22e-16.
 
 Verdict: accelerating (exponential, 1.00 confidence).
-Per-capita slope: +1.055e-18; forecast log-MAE (exponential): 1.54e-16.
+Per-capita slope: +1.055e-18; forecast log-MAE median (exponential): 0.
 
 Verdict: steady (linear, 1.00 confidence).
-Per-capita slope: -0.0141; forecast log-MAE (linear): 0.
+Per-capita slope: -0.0141; forecast log-MAE median (linear): 0.
 
 Verdict: indeterminate (reason: logistic_unidentifiable).
 The logistic carrying capacity is not identified by the observed window.

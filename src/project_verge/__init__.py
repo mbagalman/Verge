@@ -10,6 +10,7 @@ from ._api import (
 from ._types import (
     BootstrapIntervals,
     Diagnostics,
+    ForecastDiagnostic,
     GrowthAnalysis,
     Interval,
     ModelFit,
@@ -26,6 +27,7 @@ from ._uncertainty import (
 __all__ = [
     "BootstrapIntervals",
     "Diagnostics",
+    "ForecastDiagnostic",
     "GrowthAnalysis",
     "Interval",
     "ModelFit",

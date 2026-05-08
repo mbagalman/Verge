@@ -21,6 +21,33 @@ class Prediction(NamedTuple):
     high: float
 
 
+class ForecastDiagnostic(NamedTuple):
+    """Forward-chaining one-step forecast performance for a single model.
+
+    ``median_log_error`` is the median of the absolute log-space errors over
+    the rolling-window forecasts where the model converged. The previous
+    aggregator used the *mean* of all errors, which collapsed to ``inf``
+    whenever any single window failed to converge -- destroying signal
+    from the rest. The median ignores non-converged windows by
+    construction (their errors are not included), and the separate
+    ``convergence_rate`` makes the unreliability auditable.
+
+    ``convergence_rate`` is the fraction of attempted rolling windows
+    where the model actually converged, in ``[0, 1]``. ``n_windows`` is
+    the total number of rolling windows attempted, useful for
+    distinguishing low convergence-rate at small n (few windows) from
+    low convergence-rate at large n (genuine failure-prone fitting).
+
+    When zero windows converge, ``median_log_error`` is NaN. Downstream
+    consumers (e.g. the ``logistic_has_best_forecast`` signal) filter out
+    NaN candidates.
+    """
+
+    median_log_error: float
+    convergence_rate: float
+    n_windows: int
+
+
 @dataclass(frozen=True)
 class ModelFit:
     """Stores the result of fitting a single growth model."""
@@ -76,9 +103,9 @@ class Diagnostics:
     residual_curvature_std_err: float
     residual_curvature_t_stat: float
     residual_curvature_p_value: float
-    forecast_mae_exponential: float
-    forecast_mae_linear: float
-    forecast_mae_logistic: float
+    forecast_exponential: ForecastDiagnostic
+    forecast_linear: ForecastDiagnostic
+    forecast_logistic: ForecastDiagnostic
     signal_agreement: SignalAgreement
     residual_normality_pvalue: float
     residual_autocorr_pvalue: float

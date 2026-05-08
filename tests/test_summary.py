@@ -39,7 +39,7 @@ def test_summary_for_clean_linear_says_steady():
     assert "steady" in summary
     assert "linear" in summary
     assert "Estimated ceiling" not in summary
-    assert "forecast log-MAE (linear)" in summary
+    assert "forecast log-MAE median (linear)" in summary
 
 
 def test_summary_for_clear_logistic_includes_K_and_inflection_intervals():

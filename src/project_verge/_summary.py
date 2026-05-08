@@ -119,14 +119,27 @@ def _format_diagnostic_line(result: "GrowthAnalysis") -> str:
     diag = result.diagnostics
     parts = [f"Per-capita slope: {diag.per_capita_slope:+.4g}"]
 
-    mae_by_model = {
-        "exponential": diag.forecast_mae_exponential,
-        "linear": diag.forecast_mae_linear,
-        "logistic": diag.forecast_mae_logistic,
+    forecast_by_model = {
+        "exponential": diag.forecast_exponential,
+        "linear": diag.forecast_linear,
+        "logistic": diag.forecast_logistic,
     }
-    mae = mae_by_model.get(result.preferred_model)
-    if mae is not None and math.isfinite(mae):
-        parts.append(f"forecast log-MAE ({result.preferred_model}): {mae:.3g}")
+    forecast = forecast_by_model.get(result.preferred_model)
+    if forecast is not None and math.isfinite(forecast.median_log_error):
+        # The summary surfaces the median (not the mean) and notes the
+        # convergence rate when it's below 100%, since a 0.04 median over
+        # half-converged windows is a very different signal than 0.04
+        # over all windows.
+        line = (
+            f"forecast log-MAE median ({result.preferred_model}): "
+            f"{forecast.median_log_error:.3g}"
+        )
+        if forecast.convergence_rate < 1.0:
+            line += (
+                f" (converged {int(round(forecast.convergence_rate * 100))}%"
+                f" of {forecast.n_windows} windows)"
+            )
+        parts.append(line)
     elif result.is_indeterminate:
         parts.append(_format_indeterminate_weights(result))
 

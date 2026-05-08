@@ -14,7 +14,7 @@ from ._fit import (
     linear_curve,
     logistic_curve,
 )
-from ._types import Diagnostics, ModelFit, SignalAgreement
+from ._types import Diagnostics, ForecastDiagnostic, ModelFit, SignalAgreement
 
 # One-sided p-value threshold for treating a supporting signal as
 # "significantly negative". The threshold sits at the standard 0.05; future
@@ -48,16 +48,16 @@ def build_diagnostics(
 ) -> Diagnostics:
     pc = _per_capita_regression(time, values)
     cv = _residual_curvature_score(time, values)
-    exp_forecast_mae = _forward_chaining_mae(time, values, fit_exponential_model, min_train=5)
-    lin_forecast_mae = _forward_chaining_mae(time, values, fit_linear_model, min_train=5)
-    log_forecast_mae = _forward_chaining_mae(time, values, fit_logistic_model, min_train=6)
+    exp_forecast = _forward_chaining_diagnostic(time, values, fit_exponential_model, min_train=5)
+    lin_forecast = _forward_chaining_diagnostic(time, values, fit_linear_model, min_train=5)
+    log_forecast = _forward_chaining_diagnostic(time, values, fit_logistic_model, min_train=6)
     identifiability_warnings = _logistic_identifiability_warnings(time, values, logistic_fit)
 
     signal_agreement = SignalAgreement(
         per_capita_slope_negative=pc.p_value < _SIGNAL_SIGNIFICANCE,
         residual_curvature_negative=cv.p_value < _SIGNAL_SIGNIFICANCE,
         logistic_has_best_forecast=_logistic_has_best_forecast(
-            exp_forecast_mae, lin_forecast_mae, log_forecast_mae
+            exp_forecast, lin_forecast, log_forecast
         ),
     )
 
@@ -78,9 +78,9 @@ def build_diagnostics(
         residual_curvature_std_err=cv.std_err,
         residual_curvature_t_stat=cv.t_stat,
         residual_curvature_p_value=cv.p_value,
-        forecast_mae_exponential=float(exp_forecast_mae),
-        forecast_mae_linear=float(lin_forecast_mae),
-        forecast_mae_logistic=float(log_forecast_mae),
+        forecast_exponential=exp_forecast,
+        forecast_linear=lin_forecast,
+        forecast_logistic=log_forecast,
         signal_agreement=signal_agreement,
         residual_normality_pvalue=normality_p,
         residual_autocorr_pvalue=autocorr_p,
@@ -248,14 +248,21 @@ def _build_assumption_warnings(
 
 
 def _logistic_has_best_forecast(
-    exp_mae: float,
-    lin_mae: float,
-    log_mae: float,
+    exp_forecast: ForecastDiagnostic,
+    lin_forecast: ForecastDiagnostic,
+    log_forecast: ForecastDiagnostic,
 ) -> bool:
+    """True iff logistic has the lowest median log error among the three.
+
+    Models with no converged windows (median NaN) are filtered out -- a
+    model that failed to forecast cannot be the "best" forecaster, even
+    if everything else fared worse. Ties are resolved by the order
+    candidates are listed (alphabetical), which matters only on
+    pathologically symmetric data."""
     candidates = [
-        (exp_mae, "exponential"),
-        (lin_mae, "linear"),
-        (log_mae, "logistic"),
+        (exp_forecast.median_log_error, "exponential"),
+        (lin_forecast.median_log_error, "linear"),
+        (log_forecast.median_log_error, "logistic"),
     ]
     finite = [(m, name) for m, name in candidates if math.isfinite(m)]
     if not finite:
@@ -264,23 +271,40 @@ def _logistic_has_best_forecast(
     return finite[0][1] == "logistic"
 
 
-def _forward_chaining_mae(
+def _forward_chaining_diagnostic(
     time: np.ndarray,
     values: np.ndarray,
     fit_func: Callable[..., ModelFit],
     *,
     min_train: int,
-) -> float:
-    errors = []
+) -> ForecastDiagnostic:
+    """Roll forward through ``values`` fitting on each prefix and forecasting
+    one step ahead, then aggregate.
 
-    # Logistic has one more curve parameter than exponential, so we require one
-    # additional training observation before attempting rolling forecasts.
+    The previous version of this function used the *mean* of all forecast
+    errors, marking failed-to-converge windows with ``inf``. A single
+    failed window therefore poisoned the aggregate. The replacement uses
+    the median of the converged windows' errors and exposes the
+    convergence rate separately, so consumers can decide how much to
+    trust the median given how many fits succeeded.
+
+    Logistic has one more curve parameter than exponential, so callers pass
+    a larger ``min_train`` for it to ensure the prefix has enough degrees
+    of freedom for a logistic fit to be defined.
+    """
+    errors = []
+    n_attempted = 0
+    n_converged = 0
+
     for split_index in range(min_train, len(values)):
+        n_attempted += 1
         train_time = time[:split_index]
         train_values = values[:split_index]
-        fit = fit_func(train_time, train_values, min_points=min_train)
+        try:
+            fit = fit_func(train_time, train_values, min_points=min_train)
+        except ValueError:
+            continue
         if not fit.converged:
-            errors.append(np.inf)
             continue
 
         future_time = np.array([time[split_index]])
@@ -296,12 +320,26 @@ def _forward_chaining_mae(
                 fit.parameters["t0"],
             )
 
-        error = abs(np.log(values[split_index]) - np.log(np.clip(prediction[0], np.finfo(float).tiny, None)))
-        errors.append(float(error))
+        predicted_value = float(np.clip(prediction[0], np.finfo(float).tiny, None))
+        error = abs(float(np.log(values[split_index])) - float(np.log(predicted_value)))
+        if not math.isfinite(error):
+            # Defensive: a wildly out-of-range prediction can produce a
+            # non-finite error even though the fit "converged". Don't let
+            # that contaminate the median.
+            continue
+        errors.append(error)
+        n_converged += 1
 
-    if not errors:
-        return float("inf")
-    return float(np.mean(errors))
+    if errors:
+        median_log_error = float(np.median(errors))
+    else:
+        median_log_error = float("nan")
+    convergence_rate = (n_converged / n_attempted) if n_attempted > 0 else 0.0
+    return ForecastDiagnostic(
+        median_log_error=median_log_error,
+        convergence_rate=float(convergence_rate),
+        n_windows=n_attempted,
+    )
 
 
 def _logistic_identifiability_warnings(
