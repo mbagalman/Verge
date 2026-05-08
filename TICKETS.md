@@ -44,7 +44,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | **done** (`993bc56`) |
 | T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | **done** (`e860e42`) |
 | T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | **done** (`37ad665`) |
-| T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | open |
+| T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | **done** (`ab5695a`) |
 | T-24 | Glossary in docs | P3 | D | S | — | open |
 | T-25 | `CHANGELOG.md` | P3 | D | S | — | open |
 | T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — | open |
@@ -469,7 +469,7 @@ Replace `str` annotations on [_types.py:13](src/project_verge/_types.py#L13) and
 ---
 
 ### T-23: Make `assumptions` field structured (or remove)
-**Category:** Code · **Effort:** S · **Depends on:** T-15
+**Category:** Code · **Effort:** S · **Depends on:** T-15 · **Status:** Done in commit `ab5695a`
 
 [_api.py:62-67](src/project_verge/_api.py#L62-L67) returns a fixed prose tuple regardless of what actually happened during the analysis. Either remove (it's docstring material) or convert to structured flags: `{"used_lognormal": True, "n_observations": 18, "smoothing_applied": False, "criterion": "aicc"}`.
 
