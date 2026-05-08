@@ -164,7 +164,23 @@ def _should_show_logistic_intervals(result: "GrowthAnalysis") -> bool:
     # untrustworthy, so reporting K/t0 from it would be misleading.
     if result.indeterminate_reason == "neither_model_fits":
         return False
+    # Don't advertise K when the logistic was not even the leading candidate.
+    # In an ambiguous_evidence verdict where logistic placed (e.g.) third to
+    # an exponential winner, the bootstrap-derived K has no relationship to
+    # a real saturation ceiling and is more likely to confuse than inform.
+    if _leading_model_from_weights(result) != "logistic":
+        return False
     return True
+
+
+def _leading_model_from_weights(result: "GrowthAnalysis") -> str:
+    weights = {
+        "exponential": result.p_exponential,
+        "linear": result.p_linear,
+        "logistic": result.p_logistic,
+        "power_law": result.p_power_law,
+    }
+    return max(weights, key=weights.__getitem__)
 
 
 def _fmt(value: float) -> str:

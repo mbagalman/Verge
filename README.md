@@ -147,10 +147,9 @@ Pass an existing `ax` to compose with other axes; pass `extrapolate_fraction=0` 
 ============================================================
 Full history (1750-2022)
 ============================================================
-Verdict: accelerating (exponential, 0.88 confidence).
-Per-capita slope: +0.0008194; forecast log-MAE (exponential): 0.286.
-Prediction for 2050: 8.25B (90% CI [7.31, 10.67]B)
-Prediction for 2100: 12.86B (90% CI [11.17, 19.39]B)
+Verdict: indeterminate (reason: ambiguous_evidence).
+Posterior weights are too close to call between the candidate models.
+Per-capita slope: +0.0008194; posterior weights: exponential 0.88 [0.88, 0.88], linear 0.00 [0.00, 0.00], logistic 0.12 [0.12, 0.12], power-law 0.00 [0.00, 0.00].
 
 ============================================================
 Post-1950 only (demographic transition window)
@@ -162,13 +161,18 @@ Estimated inflection time ~= 2004 [1997, 2012].
 Per-capita slope: -0.002296; posterior weights: exponential 0.00 [0.00, 0.00], linear 0.00 [0.00, 0.85], logistic 1.00 [0.14, 1.00], power-law 0.00 [0.00, 0.00].
 ```
 
-The two windows give different stories honestly. Pre-1950 the data is dominated by ~200 years of acceleration, and Verge says so. Post-1950 the in-sample logistic fit is excellent — `K ≈ 13B` [11.8, 14.2], inflection ≈ 2004 [1997, 2012] — but with only 9 observations and a 4-parameter logistic the AICc small-sample penalty is meaningful, and the bootstrap CI on the logistic weight is wide ([0.14, 1.00]). Verge composes that into `indeterminate (reason: fragile_verdict)`: the headline says "leveling off looks plausible but I cannot commit to it from 9 data points." Add another decade of observations and the same dataset will likely flip to a decisive `leveling off`. Switching to `criterion="bic"` recovers the previous "leveling off (logistic, 1.00 confidence; 90% CI [0.67, 1.00])" verdict — BIC's penalty is gentler at small n, which is exactly the trade-off T-12 documents.
+Both windows are flagged as `indeterminate` under defaults, for two distinct reasons that are themselves the lesson:
+
+- Full history (n = 14): exponential leads with weight 0.88, which clears the `"positive"` band (0.75) but not the `"strong"` default (0.95). Verge declines to commit. The honest read is "exponential is the most likely candidate, but 0.88 is not a verdict, it is a lean." Pass `evidence_strength="positive"` and the verdict becomes `accelerating (exponential, 0.88 confidence)`; pass `"decisive"` and even AICc's preferred candidate would have to clear 0.99 (almost no real-data fit does).
+- Post-1950 only (n = 9): the in-sample logistic fit is excellent (`K ≈ 13B`, inflection ≈ 2004), but with only 9 observations and a 4-parameter logistic the AICc small-sample penalty makes the bootstrap CI on the logistic weight wide ([0.14, 1.00]). T-28's `fragile_verdict` gate fires: "leveling off looks plausible but I cannot commit to it from 9 data points." Switching to `criterion="bic"` (gentler small-sample penalty) recovers the historical `leveling off (logistic, 1.00 confidence; 90% CI [0.67, 1.00])` verdict.
+
+Both indeterminate reasons are working as designed. Add another decade of observations to the modern window and the dataset will likely flip to a decisive `leveling off`. Move the threshold from `"strong"` to `"positive"` and the historical-window verdict becomes `accelerating`. The point of the example is that those *are* knobs the user can turn — Verge's defaults are conservative on purpose so that the headline only commits when the evidence is genuinely strong.
 
 Run it yourself with `python examples/world_population.py` to see the side-by-side plot.
 
 ## API
 
-### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, criterion="aicc", horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
+### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, criterion="aicc", evidence_strength="strong", horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
@@ -177,6 +181,16 @@ Runs the full analysis and returns a `GrowthAnalysis` object.
 `GrowthAnalysis.indeterminate_reason` is `None` when the verdict is decisive, and otherwise one of `"neither_model_fits"`, `"ambiguous_evidence"`, or `"logistic_unidentifiable"`.
 
 `criterion` selects the information criterion used for the four-way model comparison: `"aicc"` (default) or `"bic"`. AICc applies the standard small-sample correction `+ 2k(k+1)/(n−k−1)` on top of AIC; for the typical input sizes Verge sees (n = 8–30) the correction is meaningful and matches the small-sample-regression literature's recommendation. The two criteria pick the same model on clean data with a clear winner; on borderline cases AICc tends to penalize the higher-parameter logistic / power-law candidates more strongly than BIC at small n.
+
+`evidence_strength` controls how decisive the leading model has to be before Verge commits to a non-`indeterminate` verdict. The named bands are calibrated against Kass & Raftery's (1995) interpretive scale for log Bayes factors:
+
+| `evidence_strength` | Winning weight | Approx. ΔIC gap | Kass & Raftery band |
+| --- | --- | --- | --- |
+| `"positive"` | ≥ 0.75 | ≥ ~2 | "positive" |
+| `"strong"` (default) | ≥ 0.95 | ≥ ~6 | "strong" |
+| `"decisive"` | ≥ 0.99 | ≥ ~10 | "decisive" |
+
+Below the threshold the verdict is forced to `indeterminate (reason: ambiguous_evidence)`. The default `"strong"` is intentionally conservative: a leading weight of 0.85 is *suggestive* of accelerating / leveling off / steady, but it is not a verdict you should bet on, and Verge says so. Pass `evidence_strength="positive"` if you want the looser threshold; pass `"decisive"` if you want only very-high-confidence verdicts.
 
 `horizons`, `n_boot`, `bootstrap_confidence`, and `bootstrap_seed` control a pair-bootstrap that fills `GrowthAnalysis.logistic_intervals` with percentile intervals for the logistic `K`, `r`, and `t0`, plus one prediction interval per supplied horizon (in the original time coordinate). The bootstrap runs only when it is actually informative — when the logistic is the preferred model or the verdict is indeterminate — because the optimizer is unidentified on data that is clearly exponential and a bootstrap there would just be expensive decoration. Pass `n_boot=0` to skip the bootstrap entirely.
 

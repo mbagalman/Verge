@@ -49,6 +49,7 @@ def analyze_growth(
     min_fit_quality: float = 0.85,
     max_weight_ci_width: float = 0.40,
     criterion: str = "aicc",
+    evidence_strength: str = "strong",
     horizons: Optional[Sequence[float]] = None,
     n_boot: int = 500,
     bootstrap_confidence: float = 0.90,
@@ -64,6 +65,7 @@ def analyze_growth(
     _validate_fit_quality(min_fit_quality)
     _validate_max_weight_ci_width(max_weight_ci_width)
     _validate_criterion(criterion)
+    winning_weight_threshold = _evidence_strength_threshold(evidence_strength)
 
     exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
     linear_fit = fit_linear_model(normalized_time, normalized_values, min_points=min_points)
@@ -118,7 +120,7 @@ def analyze_growth(
         indeterminate_reason: Optional[str] = "neither_model_fits"
     elif leading_model == "power_law":
         indeterminate_reason = "power_law_shape"
-    elif winning_weight < 0.70:
+    elif winning_weight < winning_weight_threshold:
         indeterminate_reason = "ambiguous_evidence"
     elif leading_model == "logistic" and logistic_poorly_identified:
         indeterminate_reason = "logistic_unidentifiable"
@@ -314,3 +316,24 @@ def _validate_max_weight_ci_width(max_weight_ci_width: float) -> None:
 def _validate_criterion(criterion: str) -> None:
     if criterion not in ("aicc", "bic"):
         raise ValueError("criterion must be 'aicc' or 'bic'")
+
+
+# Winning-weight thresholds for the four-way model competition, mapped from
+# Kass & Raftery's (1995) interpretive bands for log Bayes factors. The
+# thresholds are rounded to clean two-decimal values; in the binary-comparison
+# limit the exact mapping is w = exp(d/2) / (1 + exp(d/2)) where d is the IC
+# gap to the next-best model -- so 0.75 ~ d=2.2, 0.95 ~ d=5.9, 0.99 ~ d=9.2.
+_EVIDENCE_BAND_THRESHOLDS = {
+    "positive": 0.75,
+    "strong": 0.95,
+    "decisive": 0.99,
+}
+
+
+def _evidence_strength_threshold(evidence_strength: str) -> float:
+    if evidence_strength not in _EVIDENCE_BAND_THRESHOLDS:
+        raise ValueError(
+            "evidence_strength must be one of "
+            + ", ".join(repr(name) for name in _EVIDENCE_BAND_THRESHOLDS)
+        )
+    return _EVIDENCE_BAND_THRESHOLDS[evidence_strength]
