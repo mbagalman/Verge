@@ -46,7 +46,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | **done** (`37ad665`) |
 | T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | **done** (`ab5695a`) |
 | T-24 | Glossary in docs | P3 | D | S | — | **done** (`ffd7716`) |
-| T-25 | `CHANGELOG.md` | P3 | D | S | — | open |
+| T-25 | `CHANGELOG.md` | P3 | D | S | — | **done** (`7f4bc98`) |
 | T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — | open |
 
 ---
@@ -487,7 +487,7 @@ Plain-English definitions for: BIC / AICc, log-normal observation model, identif
 ---
 
 ### T-25: `CHANGELOG.md`
-**Category:** Docs · **Effort:** S
+**Category:** Docs · **Effort:** S · **Status:** Done in commit `7f4bc98`
 
 Standard Keep-a-Changelog format. Pre-populate with the v0.1.0 entry once that ships.
 
