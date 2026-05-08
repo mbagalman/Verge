@@ -45,7 +45,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | **done** (`e860e42`) |
 | T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | **done** (`37ad665`) |
 | T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | **done** (`ab5695a`) |
-| T-24 | Glossary in docs | P3 | D | S | — | open |
+| T-24 | Glossary in docs | P3 | D | S | — | **done** (`ffd7716`) |
 | T-25 | `CHANGELOG.md` | P3 | D | S | — | open |
 | T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — | open |
 
@@ -478,7 +478,7 @@ Replace `str` annotations on [_types.py:13](src/project_verge/_types.py#L13) and
 ---
 
 ### T-24: Glossary in docs
-**Category:** Docs · **Effort:** S
+**Category:** Docs · **Effort:** S · **Status:** Done in commit `ffd7716`
 
 Plain-English definitions for: BIC / AICc, log-normal observation model, identifiability, carrying capacity, posterior weight, indeterminate. Either a new `GLOSSARY.md` or a section in README.
 
