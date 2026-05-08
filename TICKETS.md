@@ -41,7 +41,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) | **done** (`eff41d2`) |
 | T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — | **done** (`0509163`) |
 | T-19 | Calibration evidence in docs | P2 | D | M | T-17 | **done** (`904907e`) |
-| T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | open |
+| T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | **done** (`993bc56`) |
 | T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | open |
 | T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | open |
 | T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | open |
@@ -442,7 +442,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ## P3 — Polish and process
 
 ### T-20: `Literal` / `Enum` types for `model_name` and `preferred_model`
-**Category:** Code · **Effort:** S
+**Category:** Code · **Effort:** S · **Status:** Done in commit `993bc56`
 
 Replace `str` annotations on [_types.py:13](src/project_verge/_types.py#L13) and [_types.py:46](src/project_verge/_types.py#L46) with `typing.Literal[...]`. Catches typos at type-check time.
 
