@@ -226,6 +226,25 @@ Version 1 assumes:
 - `values` is nondecreasing
 - at least 8 observations are provided for `analyze_growth`
 
+## How calibrated are these probabilities?
+
+The headline number after a verdict — `(logistic, 0.95 confidence)` and similar — is the BIC/AICc-derived posterior weight on the winning model. For that number to mean what it says, the empirical accuracy at any given confidence level should approximately match: at 0.90 predicted confidence, Verge should be right about 90% of the time.
+
+[examples/calibration.py](examples/calibration.py) generates calibration evidence by running 900 seeded synthetic trials (300 each from logistic / exponential / linear, with random parameters and multiplicative log-normal noise at sigma in [0, 0.10], routed through `allow_smoothing=True`), recording the predicted model and its weight, and binning by confidence to compute empirical accuracy. The result, saved to [docs/calibration.png](docs/calibration.png):
+
+![Verge calibration plot](docs/calibration.png)
+
+Reading the plot:
+
+- **Aggregated (solid blue):** roughly tracks the `y = x` diagonal in the well-populated mid-confidence range (0.7–0.9). At very high confidence (0.95+, the rightmost bin with 425 trials) the empirical accuracy is ~89%, slightly below the predicted 95%+ — there is a real ~6 point under-calibration when Verge commits decisively. The low-confidence bins on the left have small populations (n in single digits to ~30) and noisy estimates.
+- **Logistic (red):** every trial lands in the 0.95+ bin and is correctly classified — Verge is essentially never wrong about a true logistic shape, even noisy.
+- **Exponential (orange dashed):** tracks the diagonal in the populated bins, with the bulk of mass in the 0.85–0.97 range. 92% accuracy overall.
+- **Linear (green dashed):** consistently below the diagonal. Linear data with multiplicative noise + cumulative-max smoothing (T-15) gets misclassified ~48% of the time as logistic or power-law shape. This is the smoothing trade-off the *Failure modes* section calls out: cumulative-max maps real downward dips to flat segments, which look saturating to the logistic / power-law fits. The miscalibration is real and documented; if your domain has noisy linear-like data, prefer your own pre-processing over `allow_smoothing=True`.
+
+The right way to read the plot is "Verge's high-confidence verdicts are mostly right, with a few-percent under-calibration at the top, and a real failure mode for noise-dominated linear inputs". Pair the probability with the structured indeterminate reasons (`signal_disagreement`, `fragile_verdict`, `power_law_shape`, `neither_model_fits`) for a full picture; the probability alone, even at 0.95+, is not the whole story.
+
+To re-run on your own machine: `python examples/calibration.py` (requires the `[plot]` extra). The script prints a per-class accuracy table to stdout and writes the figure to `docs/calibration.png` by default.
+
 ## Failure modes
 
 Verge's input contract is intentionally narrow and its candidate model space is small. When inputs sit outside what v1 supports, the failure shows up in one of three ways: a `ValueError` from input validation, an `indeterminate` verdict with a structured `indeterminate_reason`, or — in a few cases worth being honest about — a confident-looking verdict on data the library cannot actually distinguish. This section catalogs the patterns most worth watching for.
