@@ -159,9 +159,10 @@ def fit_power_law_model(
     sigma2 = max(rss / n, 1e-12)
     log_likelihood = -0.5 * n * (np.log(2.0 * np.pi * sigma2) + 1.0)
     # Two curve parameters plus the shared observation-noise scale, matching
-    # the BIC bookkeeping used by the other model fits.
+    # the information-criterion bookkeeping used by the other model fits.
     parameter_count = 2 + 1
     bic = parameter_count * np.log(n) - 2.0 * log_likelihood
+    aicc = _aicc(log_likelihood, parameter_count, n)
     log_r_squared = _log_space_r_squared(values, rss)
 
     return ModelFit(
@@ -170,6 +171,7 @@ def fit_power_law_model(
         fitted_values=fitted_values,
         log_likelihood=float(log_likelihood),
         bic=float(bic),
+        aicc=float(aicc),
         log_r_squared=float(log_r_squared),
         converged=True,
         warnings=(),
@@ -212,9 +214,11 @@ def _fit_model(
         sigma2 = max(rss / len(values), 1e-12)
         log_likelihood = -0.5 * len(values) * (np.log(2.0 * np.pi * sigma2) + 1.0)
         # Count the observation-noise scale parameter alongside the curve parameters
-        # so the BIC reflects the full log-normal observation model.
+        # so the information criteria reflect the full log-normal observation model.
         parameter_count = len(parameter_names) + 1
-        bic = parameter_count * np.log(len(values)) - 2.0 * log_likelihood
+        n = len(values)
+        bic = parameter_count * np.log(n) - 2.0 * log_likelihood
+        aicc = _aicc(log_likelihood, parameter_count, n)
         log_r_squared = _log_space_r_squared(values, rss)
         if not result.success:
             warnings.append(result.message)
@@ -224,6 +228,7 @@ def _fit_model(
             fitted_values=fitted_values,
             log_likelihood=float(log_likelihood),
             bic=float(bic),
+            aicc=float(aicc),
             log_r_squared=float(log_r_squared),
             converged=bool(result.success),
             warnings=tuple(warnings),
@@ -236,6 +241,7 @@ def _fit_model(
             fitted_values=np.full_like(values, np.nan, dtype=float),
             log_likelihood=float("-inf"),
             bic=float("inf"),
+            aicc=float("inf"),
             log_r_squared=float("-inf"),
             converged=False,
             warnings=tuple(warnings),
@@ -249,6 +255,22 @@ def _log_space_r_squared(values: np.ndarray, rss: float) -> float:
         # All observations equal on the log scale; any sensible fit is perfect.
         return 1.0
     return 1.0 - rss / tss
+
+
+def _aicc(log_likelihood: float, parameter_count: int, n: int) -> float:
+    """Akaike Information Criterion with the standard small-sample correction.
+
+    AICc = AIC + 2k(k+1)/(n - k - 1). When ``n - k - 1 <= 0`` the correction
+    blows up; we return +inf so the model gets zero weight in the AICc-based
+    competition. This corner case is reachable only in the bootstrap path
+    with ``min_points = _BOOTSTRAP_MIN_POINTS = 4`` and a four-parameter
+    fit (logistic with the noise scale).
+    """
+    aic = 2.0 * parameter_count - 2.0 * log_likelihood
+    denom = n - parameter_count - 1
+    if denom <= 0:
+        return float("inf")
+    return aic + 2.0 * parameter_count * (parameter_count + 1) / denom
 
 
 def _initial_guess_exponential(time: np.ndarray, values: np.ndarray) -> np.ndarray:

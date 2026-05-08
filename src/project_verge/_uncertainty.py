@@ -220,24 +220,29 @@ def bootstrap_model_weights(
     prior_linear: float = 0.5,
     prior_logistic: float = 0.5,
     prior_power_law: float = 0.5,
+    criterion: str = "aicc",
     n_boot: int = 500,
     confidence: float = 0.90,
     seed: Optional[int] = None,
 ) -> WeightIntervals:
-    """Pair-bootstrap percentile intervals for the BIC-derived posterior weights.
+    """Pair-bootstrap percentile intervals for the information-criterion
+    posterior weights.
 
     Resamples ``(time, values)`` pairs with replacement, refits all four
     candidate models (exponential, linear, logistic, power-law) on each
-    resample, recomputes the BIC-derived four-way weights, and returns
-    percentile intervals at the requested ``confidence`` level. Resamples
-    where every fit fails to produce a finite BIC are skipped and counted
-    via ``n_successful``.
+    resample, recomputes the four-way weights using the requested
+    ``criterion`` ("aicc" or "bic"), and returns percentile intervals at the
+    requested ``confidence`` level. Resamples where every fit fails to
+    produce a finite criterion score are skipped and counted via
+    ``n_successful``.
     """
 
     _validate_confidence(confidence)
     _validate_weight_priors(
         prior_exponential, prior_linear, prior_logistic, prior_power_law
     )
+    if criterion not in ("aicc", "bic"):
+        raise ValueError("criterion must be 'aicc' or 'bic'")
     if n_boot < 0:
         raise ValueError("n_boot must be non-negative")
 
@@ -267,11 +272,12 @@ def bootstrap_model_weights(
         except ValueError:
             continue
 
+        score_field = "bic" if criterion == "bic" else "aicc"
         weights = _four_way_weights(
-            exp_fit.bic,
-            lin_fit.bic,
-            log_fit.bic,
-            pow_fit.bic,
+            getattr(exp_fit, score_field),
+            getattr(lin_fit, score_field),
+            getattr(log_fit, score_field),
+            getattr(pow_fit, score_field),
             prior_exponential=prior_exponential,
             prior_linear=prior_linear,
             prior_logistic=prior_logistic,
@@ -298,30 +304,31 @@ def bootstrap_model_weights(
 
 
 def _four_way_weights(
-    bic_exp: float,
-    bic_lin: float,
-    bic_log: float,
-    bic_pow: float,
+    score_exp: float,
+    score_lin: float,
+    score_log: float,
+    score_pow: float,
     *,
     prior_exponential: float,
     prior_linear: float,
     prior_logistic: float,
     prior_power_law: float,
 ) -> Optional[tuple]:
-    """Normalize BIC-derived weights across four models. Returns ``None`` when
-    no model has a finite BIC."""
+    """Normalize information-criterion weights across four models. ``score_*``
+    is whichever criterion the caller selected (BIC or AICc); the math is
+    identical. Returns ``None`` when no model has a finite score."""
 
-    bics = np.array([bic_exp, bic_lin, bic_log, bic_pow], dtype=float)
+    scores = np.array([score_exp, score_lin, score_log, score_pow], dtype=float)
     priors = np.array(
         [prior_exponential, prior_linear, prior_logistic, prior_power_law],
         dtype=float,
     )
-    finite_mask = np.isfinite(bics)
+    finite_mask = np.isfinite(scores)
     if not np.any(finite_mask):
         return None
-    min_bic = np.min(bics[finite_mask])
+    min_score = np.min(scores[finite_mask])
     log_weights = np.full(4, -np.inf, dtype=float)
-    log_weights[finite_mask] = np.log(priors[finite_mask]) - 0.5 * (bics[finite_mask] - min_bic)
+    log_weights[finite_mask] = np.log(priors[finite_mask]) - 0.5 * (scores[finite_mask] - min_score)
     normalization = np.logaddexp.reduce(log_weights[finite_mask])
     probabilities = np.zeros(4, dtype=float)
     probabilities[finite_mask] = np.exp(log_weights[finite_mask] - normalization)

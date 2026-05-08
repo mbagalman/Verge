@@ -30,6 +30,7 @@ class ModelFit:
     fitted_values: np.ndarray
     log_likelihood: float
     bic: float
+    aicc: float
     log_r_squared: float
     converged: bool
     warnings: Tuple[str, ...] = ()

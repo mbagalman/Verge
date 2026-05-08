@@ -48,6 +48,7 @@ def analyze_growth(
     min_points: int = 8,
     min_fit_quality: float = 0.85,
     max_weight_ci_width: float = 0.40,
+    criterion: str = "aicc",
     horizons: Optional[Sequence[float]] = None,
     n_boot: int = 500,
     bootstrap_confidence: float = 0.90,
@@ -62,6 +63,7 @@ def analyze_growth(
     _validate_priors(prior_exponential, prior_linear, prior_logistic, prior_power_law)
     _validate_fit_quality(min_fit_quality)
     _validate_max_weight_ci_width(max_weight_ci_width)
+    _validate_criterion(criterion)
 
     exponential_fit = fit_exponential_model(normalized_time, normalized_values, min_points=min_points)
     linear_fit = fit_linear_model(normalized_time, normalized_values, min_points=min_points)
@@ -74,7 +76,8 @@ def analyze_growth(
             "linear": (linear_fit, prior_linear),
             "logistic": (logistic_fit, prior_logistic),
             "power_law": (power_law_fit, prior_power_law),
-        }
+        },
+        criterion=criterion,
     )
     p_exponential = weights_by_name["exponential"]
     p_linear = weights_by_name["linear"]
@@ -148,6 +151,7 @@ def analyze_growth(
             prior_linear=prior_linear,
             prior_logistic=prior_logistic,
             prior_power_law=prior_power_law,
+            criterion=criterion,
             n_boot=n_boot,
             confidence=bootstrap_confidence,
             seed=bootstrap_seed,
@@ -191,25 +195,33 @@ def analyze_growth(
 
 def _posterior_model_weights(
     fits_with_priors: dict,
+    *,
+    criterion: str = "aicc",
 ) -> dict:
-    """Normalize BIC-derived posterior weights across an arbitrary set of models.
+    """Normalize information-criterion-derived posterior weights across an
+    arbitrary set of models.
 
     ``fits_with_priors`` is a mapping ``name -> (ModelFit, prior)``. Returns a
     mapping of the same names to normalized posterior weights summing to 1.
-    Models whose BIC is non-finite (e.g. fit failures) receive zero weight.
+    Models whose criterion score is non-finite (e.g. fit failures, or AICc
+    when ``n - k - 1 <= 0``) receive zero weight.
     """
 
+    score_field = "bic" if criterion == "bic" else "aicc"
     names = list(fits_with_priors.keys())
-    bics = np.array([fits_with_priors[name][0].bic for name in names], dtype=float)
+    scores = np.array(
+        [getattr(fits_with_priors[name][0], score_field) for name in names],
+        dtype=float,
+    )
     priors = np.array([fits_with_priors[name][1] for name in names], dtype=float)
 
-    finite_mask = np.isfinite(bics)
+    finite_mask = np.isfinite(scores)
     if not np.any(finite_mask):
         raise RuntimeError("None of the candidate models produced a valid fit.")
 
-    min_bic = np.min(bics[finite_mask])
+    min_score = np.min(scores[finite_mask])
     log_weights = np.full(len(names), -np.inf, dtype=float)
-    log_weights[finite_mask] = np.log(priors[finite_mask]) - 0.5 * (bics[finite_mask] - min_bic)
+    log_weights[finite_mask] = np.log(priors[finite_mask]) - 0.5 * (scores[finite_mask] - min_score)
     normalization = np.logaddexp.reduce(log_weights[finite_mask])
     probabilities = np.zeros(len(names), dtype=float)
     probabilities[finite_mask] = np.exp(log_weights[finite_mask] - normalization)
@@ -290,3 +302,8 @@ def _validate_max_weight_ci_width(max_weight_ci_width: float) -> None:
     # winning weight will trip the fragile_verdict gate.
     if max_weight_ci_width < 0.0 or max_weight_ci_width > 1.0:
         raise ValueError("max_weight_ci_width must be in the closed interval [0, 1]")
+
+
+def _validate_criterion(criterion: str) -> None:
+    if criterion not in ("aicc", "bic"):
+        raise ValueError("criterion must be 'aicc' or 'bic'")

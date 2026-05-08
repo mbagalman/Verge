@@ -146,7 +146,7 @@ Pass an existing `ax` to compose with other axes; pass `extrapolate_fraction=0` 
 ============================================================
 Full history (1750-2022)
 ============================================================
-Verdict: accelerating (exponential, 0.79 confidence).
+Verdict: accelerating (exponential, 0.88 confidence).
 Per-capita slope: +0.0008194; forecast log-MAE (exponential): 0.286.
 Prediction for 2050: 8.25B (90% CI [7.31, 10.67]B)
 Prediction for 2100: 12.86B (90% CI [11.17, 19.39]B)
@@ -154,27 +154,28 @@ Prediction for 2100: 12.86B (90% CI [11.17, 19.39]B)
 ============================================================
 Post-1950 only (demographic transition window)
 ============================================================
-Verdict: leveling off (logistic, 1.00 confidence; 90% CI [0.67, 1.00]).
+Verdict: indeterminate (reason: fragile_verdict).
+The criterion favors a single model, but the bootstrap CI on its weight is wide enough that the verdict could swap under resampling -- treat the headline confidence as unreliable.
 Estimated ceiling K ~= 12.98 [11.78, 14.2].
 Estimated inflection time ~= 2004 [1997, 2012].
-Per-capita slope: -0.002296; forecast log-MAE (logistic): 0.0113.
-Prediction for 2050: 10.06B (90% CI [9.74, 10.24]B)
-Prediction for 2100: 12.11B (90% CI [11.24, 12.76]B)
+Per-capita slope: -0.002296; posterior weights: exponential 0.00 [0.00, 0.00], linear 0.00 [0.00, 0.85], logistic 1.00 [0.14, 1.00], power-law 0.00 [0.00, 0.00].
 ```
 
-The two windows give opposite verdicts honestly. Pre-1950 the data is dominated by ~200 years of acceleration, and Verge says so. Post-1950 the demographic transition is visible — Verge identifies a logistic bend with carrying capacity `K ≈ 13B` (90% CI roughly 12B–14B), an inflection year around 2004, and a 2050 prediction of 10B (90% CI 9.7–10.2B). The post-1950 predictions land close to UN's central forecasts (≈9.7B in 2050, ≈10.4B peak around the 2080s); the wider full-history CIs honestly reflect that a fit dominated by the long acceleration cannot pin down the eventual ceiling.
+The two windows give different stories honestly. Pre-1950 the data is dominated by ~200 years of acceleration, and Verge says so. Post-1950 the in-sample logistic fit is excellent — `K ≈ 13B` [11.8, 14.2], inflection ≈ 2004 [1997, 2012] — but with only 9 observations and a 4-parameter logistic the AICc small-sample penalty is meaningful, and the bootstrap CI on the logistic weight is wide ([0.14, 1.00]). Verge composes that into `indeterminate (reason: fragile_verdict)`: the headline says "leveling off looks plausible but I cannot commit to it from 9 data points." Add another decade of observations and the same dataset will likely flip to a decisive `leveling off`. Switching to `criterion="bic"` recovers the previous "leveling off (logistic, 1.00 confidence; 90% CI [0.67, 1.00])" verdict — BIC's penalty is gentler at small n, which is exactly the trade-off T-12 documents.
 
 Run it yourself with `python examples/world_population.py` to see the side-by-side plot.
 
 ## API
 
-### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
+### `analyze_growth(time, values, *, prior_exponential=0.5, prior_linear=0.5, prior_logistic=0.5, prior_power_law=0.5, min_points=8, min_fit_quality=0.85, max_weight_ci_width=0.40, criterion="aicc", horizons=None, n_boot=500, bootstrap_confidence=0.90, bootstrap_seed=None)`
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
 `min_fit_quality` is the log-space R² floor that each candidate model is held to. When *both* models fall below it, the verdict is forced to `indeterminate` with `indeterminate_reason = "neither_model_fits"`, so a polynomial or other out-of-family series cannot quietly produce a confident-looking exponential-vs-logistic split.
 
 `GrowthAnalysis.indeterminate_reason` is `None` when the verdict is decisive, and otherwise one of `"neither_model_fits"`, `"ambiguous_evidence"`, or `"logistic_unidentifiable"`.
+
+`criterion` selects the information criterion used for the four-way model comparison: `"aicc"` (default) or `"bic"`. AICc applies the standard small-sample correction `+ 2k(k+1)/(n−k−1)` on top of AIC; for the typical input sizes Verge sees (n = 8–30) the correction is meaningful and matches the small-sample-regression literature's recommendation. The two criteria pick the same model on clean data with a clear winner; on borderline cases AICc tends to penalize the higher-parameter logistic / power-law candidates more strongly than BIC at small n.
 
 `horizons`, `n_boot`, `bootstrap_confidence`, and `bootstrap_seed` control a pair-bootstrap that fills `GrowthAnalysis.logistic_intervals` with percentile intervals for the logistic `K`, `r`, and `t0`, plus one prediction interval per supplied horizon (in the original time coordinate). The bootstrap runs only when it is actually informative — when the logistic is the preferred model or the verdict is indeterminate — because the optimizer is unidentified on data that is clearly exponential and a bootstrap there would just be expensive decoration. Pass `n_boot=0` to skip the bootstrap entirely.
 

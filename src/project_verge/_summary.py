@@ -38,9 +38,9 @@ _INDETERMINATE_NOTE = {
         "purely exponential / linear)."
     ),
     "fragile_verdict": (
-        "BIC favors a single model, but the bootstrap CI on its weight is wide "
-        "enough that the verdict could swap under resampling -- treat the "
-        "headline confidence as unreliable."
+        "The criterion favors a single model, but the bootstrap CI on its weight "
+        "is wide enough that the verdict could swap under resampling -- treat "
+        "the headline confidence as unreliable."
     ),
 }
 
