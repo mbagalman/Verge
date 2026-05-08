@@ -330,7 +330,7 @@ The reported confidence is the posterior model weight of the winning model, appr
 - conditioned on the log-normal observation model
 - approximate, because BIC is used as a tractable proxy for full Bayesian model evidence
 
-They should be read as model-comparison evidence, not as a universal forecast probability that a real-world process must (or must not) plateau. The v1 model space is narrow on purpose; the [TICKETS](TICKETS.md) backlog tracks planned extensions to richer S-curve families.
+They should be read as model-comparison evidence, not as a universal forecast probability that a real-world process must (or must not) plateau. The v1 model space is narrow on purpose; the [TICKETS](docs/internal/TICKETS.md) backlog tracks planned extensions to richer S-curve families.
 
 Bootstrap intervals on `K`, `t0`, and prediction horizons are pair-bootstrap percentile intervals at the configured confidence level (default 90%). They quantify how much the logistic fit moves under resampling. A wide interval when the logistic is the preferred verdict is a load-bearing honesty signal — it means the data does not yet pin down where the plateau is — not a bug.
 
@@ -345,8 +345,8 @@ Plain-English definitions for the statistics terms used here — *posterior weig
 - `examples/world_population.py` (+ `examples/data/un_population.csv`): real-data worked example on world population
 - `docs/methodology.md`: design notebook walking through the diagnostic intuitions
 - `docs/glossary.md`: plain-English definitions for the statistics terms in the API
-- `PROJECT_PLAN.md`: project plan and decision log
-- `TICKETS.md`: prioritized backlog of methodology, code, and docs work
+- `docs/internal/PROJECT_PLAN.md`: project plan and decision log (development-facing)
+- `docs/internal/TICKETS.md`: prioritized backlog of methodology, code, and docs work (development-facing)
 - `CHANGELOG.md`: notable user-visible changes, in Keep-a-Changelog format
 
 ## Development

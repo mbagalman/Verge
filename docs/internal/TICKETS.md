@@ -56,7 +56,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ### T-01: Add a "neither model fits" exit
 **Category:** Methodology + Code · **Effort:** M · **Status:** Done in commit `a99d601`
 
-**Problem.** [_api.py:88-101](src/project_verge/_api.py#L88-L101) normalizes BIC weights to sum to 1.0 even when both fits are terrible. A polynomial, linear, or power-law input still produces a confident-looking exponential-vs-logistic verdict.
+**Problem.** [_api.py:88-101](../../src/project_verge/_api.py#L88-L101) normalizes BIC weights to sum to 1.0 even when both fits are terrible. A polynomial, linear, or power-law input still produces a confident-looking exponential-vs-logistic verdict.
 
 **Proposal.** Compute an absolute fit-quality metric (e.g. log-space R², or residual standard error vs a constant predictor). If both models fall below threshold, force `is_indeterminate = True` with a structured reason `"neither_model_fits"`.
 
@@ -68,14 +68,14 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Test: polynomial growth series → indeterminate with `"neither_model_fits"`
 - Test: clean exponential → exponential, not indeterminate
 
-**Files.** [_api.py](src/project_verge/_api.py), [_diagnostics.py](src/project_verge/_diagnostics.py), [_types.py](src/project_verge/_types.py), [tests/test_analysis.py](tests/test_analysis.py)
+**Files.** [_api.py](../../src/project_verge/_api.py), [_diagnostics.py](../../src/project_verge/_diagnostics.py), [_types.py](../../src/project_verge/_types.py), [tests/test_analysis.py](../../tests/test_analysis.py)
 
 ---
 
 ### T-02: Bootstrap CI on K, t0, and predicted value
 **Category:** Methodology + Code · **Effort:** M · **Status:** Done in commit `eb37fe1`
 
-**Problem.** When logistic wins, [_diagnostics.py:97-123](src/project_verge/_diagnostics.py#L97-L123) only sanity-checks K's plausibility. The user's real question — *how soon* and *where* will it level off? — needs uncertainty intervals.
+**Problem.** When logistic wins, [_diagnostics.py:97-123](../../src/project_verge/_diagnostics.py#L97-L123) only sanity-checks K's plausibility. The user's real question — *how soon* and *where* will it level off? — needs uncertainty intervals.
 
 **Proposal.** Add a pair-bootstrap helper: resample (time, values) with replacement, refit logistic, report 5/50/95 percentiles for K, t0, and `predict(t)` at user-supplied horizons.
 
@@ -88,7 +88,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 
 **Implementation note.** The "always available when logistic converged" criterion was relaxed: the bootstrap is *gated* to run only when the logistic verdict is actually informative — i.e. when `preferred_model == "logistic"` or the result is indeterminate. On clean exponential data the logistic optimizer is unidentified (K runs against its bound), and a 500-iteration bootstrap on those resamples added ~125 s to a single test. The gate keeps the default usable; pass `n_boot=0` to skip explicitly, or call `bootstrap_logistic_intervals` directly to bootstrap without the gate.
 
-**Files.** new `src/project_verge/_uncertainty.py`, [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), new `tests/test_uncertainty.py`
+**Files.** new `src/project_verge/_uncertainty.py`, [_api.py](../../src/project_verge/_api.py), [_types.py](../../src/project_verge/_types.py), new `tests/test_uncertainty.py`
 
 ---
 
@@ -105,16 +105,16 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
   > Estimated ceiling K ≈ 102 [88, 121]. Inflection ≈ year 6.4 [5.9, 7.1].
   > Per-capita slope: −0.012 (significant). Forecast MAE: log 0.04.
 - `__repr__` defers to `summary()` (or a one-line variant)
-- Snapshot test of `summary()` on the three demo cases in [examples/demo_growth_analysis.py](examples/demo_growth_analysis.py)
+- Snapshot test of `summary()` on the three demo cases in [examples/demo_growth_analysis.py](../../examples/demo_growth_analysis.py)
 
-**Files.** [_types.py](src/project_verge/_types.py), possibly new `_summary.py`, [tests/test_analysis.py](tests/test_analysis.py)
+**Files.** [_types.py](../../src/project_verge/_types.py), possibly new `_summary.py`, [tests/test_analysis.py](../../tests/test_analysis.py)
 
 ---
 
 ### T-04: Reframe README around the real question + show the indeterminate case
 **Category:** Docs · **Effort:** S · **Depends on:** T-03 · **Status:** Done in commit `c769031`
 
-**Problem.** [README.md](README.md) leads with "compares exponential vs logistic." User's question is "will this level off?" Quick Start also doesn't show the indeterminate case, which is the most honest output.
+**Problem.** [README.md](../../README.md) leads with "compares exponential vs logistic." User's question is "will this level off?" Quick Start also doesn't show the indeterminate case, which is the most honest output.
 
 **Proposal.** Rewrite the opening paragraph and Quick Start. Lead with the user-facing question. Restructure Quick Start to print `result.summary()` and cover three cases: clearly growing, clearly leveling off, indeterminate.
 
@@ -124,7 +124,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Quick Start covers all three verdict types
 - "What v1 does / does not do" preserved but reframed in user-question terms
 
-**Files.** [README.md](README.md)
+**Files.** [README.md](../../README.md)
 
 ---
 
@@ -146,14 +146,14 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 
 **Implementation note.** Picked **linear-in-y** (`y = a + b*t`) over the power-law option. Rationale: linear maps cleanly to one verdict (`steady`), where power-law spans both accelerating (`k > 1`) and decelerating (`0 < k < 1`) regimes and would muddy the verdict mapping; linear matches exponential on parameter count (2) so the BIC penalty is symmetric; and linear avoids the awkward `t = 0` handling power-law would need. Polynomial / sub-exponential growth that linear cannot capture still falls through to T-01's `neither_model_fits` exit, which is the honest answer for those out-of-family cases. The verdict surface is now four-way: `accelerating` (exponential preferred), `steady` (linear preferred), `leveling off` (logistic preferred), `indeterminate`. The previous label `still growing` was renamed to `accelerating` so the three growing verdicts are parallel.
 
-**Files.** [_fit.py](src/project_verge/_fit.py), [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), tests
+**Files.** [_fit.py](../../src/project_verge/_fit.py), [_api.py](../../src/project_verge/_api.py), [_types.py](../../src/project_verge/_types.py), tests
 
 ---
 
 ### T-06: Wire diagnostics into the verdict
 **Category:** Methodology + Code · **Effort:** M · **Status:** Done in commit `f0d76df`
 
-**Problem.** `per_capita_slope`, `residual_curvature_score`, and forecast MAE are computed in [_diagnostics.py](src/project_verge/_diagnostics.py) but never feed the verdict or the indeterminate decision. The user's question is best answered by signal *agreement*, not BIC alone.
+**Problem.** `per_capita_slope`, `residual_curvature_score`, and forecast MAE are computed in [_diagnostics.py](../../src/project_verge/_diagnostics.py) but never feed the verdict or the indeterminate decision. The user's question is best answered by signal *agreement*, not BIC alone.
 
 **Proposal.** Add t-tests for the per-capita slope (H1: slope < 0) and the curvature coefficient (H1: t² coef < 0). Combine BIC + slope-significance + curvature-significance + forecast-MAE-direction into a vote. Require multi-signal agreement before declaring a non-indeterminate verdict.
 
@@ -164,7 +164,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Indeterminate gate considers signal agreement, not just `|p_log − p_exp|`
 - Test: case where BIC favors logistic but slope and forecast MAE disagree → indeterminate
 
-**Files.** [_diagnostics.py](src/project_verge/_diagnostics.py), [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), tests
+**Files.** [_diagnostics.py](../../src/project_verge/_diagnostics.py), [_api.py](../../src/project_verge/_api.py), [_types.py](../../src/project_verge/_types.py), tests
 
 **Implementation note.** The signal-agreement gate is **asymmetric** by design — it only second-guesses the logistic verdict, not exponential or linear. Per-capita slope and log-residual curvature are *also* significantly negative for clean linear data (`b/y` decreases with `y`; `log(a + b*t)` is concave), so a symmetric "signals must agree with leading_model" gate would over-fire on every clean linear case. BIC's three-way comparison from T-05 already weighs exponential vs linear vs logistic against each other; the supporting signals only need to second-guess the logistic branch. An end-to-end "BIC says logistic but signals disagree" test is not added because clean monotone synthetic logistic data always fires all three signals at p < 1e-6 — the gate is designed for noisier real-world inputs that the v1 input contract does not yet allow. Once T-15 (smoothing / noise tolerance) lands the gate will see real use; for now the helper unit test plus the linear-passthrough test verify correctness on the inputs supported.
 
@@ -183,7 +183,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - `summary()` shows the interval
 - Test: noisy data → wide CI; clean data → narrow CI
 
-**Files.** `_uncertainty.py`, [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py)
+**Files.** `_uncertainty.py`, [_api.py](../../src/project_verge/_api.py), [_types.py](../../src/project_verge/_types.py)
 
 ---
 
@@ -200,7 +200,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - `ci=0.9` by default
 - Vectorized over `time`
 
-**Files.** [_types.py](src/project_verge/_types.py), [_api.py](src/project_verge/_api.py)
+**Files.** [_types.py](../../src/project_verge/_types.py), [_api.py](../../src/project_verge/_api.py)
 
 ---
 
@@ -219,7 +219,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Example script uses it
 - README snippet
 
-**Files.** new `src/project_verge/plot.py`, [examples/demo_growth_analysis.py](examples/demo_growth_analysis.py), [README.md](README.md), [pyproject.toml](pyproject.toml)
+**Files.** new `src/project_verge/plot.py`, [examples/demo_growth_analysis.py](../../examples/demo_growth_analysis.py), [README.md](../../README.md), [pyproject.toml](../../pyproject.toml)
 
 ---
 
@@ -243,7 +243,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Section exists in README
 - Each pattern lists: example signature, library response (warning text or indeterminate reason), suggested mitigation
 
-**Files.** [README.md](README.md)
+**Files.** [README.md](../../README.md)
 
 ---
 
@@ -252,21 +252,21 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 
 **Problem.** Examples use synthetic curves only. Trust comes from real-data demos.
 
-**Proposal.** Commit a small CSV (UN World Population Prospects subset, or another well-known public source) and an `examples/` script that reproduces the population analysis from [docs/methodology.md](docs/methodology.md).
+**Proposal.** Commit a small CSV (UN World Population Prospects subset, or another well-known public source) and an `examples/` script that reproduces the population analysis from [docs/methodology.md](../methodology.md).
 
 **Acceptance criteria.**
 - `examples/data/un_population.csv` with provenance comment in the script
 - `examples/world_population.py` runs end-to-end and prints `summary()`
 - README references it as a hero example
 
-**Files.** new `examples/data/un_population.csv`, new `examples/world_population.py`, [README.md](README.md)
+**Files.** new `examples/data/un_population.csv`, new `examples/world_population.py`, [README.md](../../README.md)
 
 ---
 
 ### T-27: Power-law shape detection (catches polynomial misclassification)
 **Category:** Methodology · **Effort:** M · **Depends on:** T-01 · **Status:** Done in commit `9e63106`
 
-**Problem.** Surfaced by writing the [README's "Failure modes / Polynomial or power-law growth"](README.md) section in T-10. At the default `min_fit_quality=0.85`, polynomial growth (`y = t**3`, etc.) silently classifies as `leveling off`: the logistic fit clears the floor at log-space R² ≈ 0.96 because `log(t**k)` is concave-down on linear `t` — the same shape signature that logistic late-stage data has. Power-law shapes have nowhere honest to land in v1's three-model space, so the library misclassifies confidently. The current mitigation (lift `min_fit_quality=0.99`) works but pushes calibration onto every user.
+**Problem.** Surfaced by writing the [README's "Failure modes / Polynomial or power-law growth"](../../README.md) section in T-10. At the default `min_fit_quality=0.85`, polynomial growth (`y = t**3`, etc.) silently classifies as `leveling off`: the logistic fit clears the floor at log-space R² ≈ 0.96 because `log(t**k)` is concave-down on linear `t` — the same shape signature that logistic late-stage data has. Power-law shapes have nowhere honest to land in v1's three-model space, so the library misclassifies confidently. The current mitigation (lift `min_fit_quality=0.99`) works but pushes calibration onto every user.
 
 **Proposal.** Add a power-law fit (linear regression of `log(y)` against `log(t - time_origin + ε)`, recovering `y = a * (t - origin)**k`) as a fourth diagnostic-only candidate. Compete it on BIC alongside exponential / linear / logistic. If power-law wins decisively, force `indeterminate` with new reason `"power_law_shape"`; do **not** extend the four-way verdict surface, because the user's question ("is this leveling off, or going up?") doesn't have a clean answer for power-law growth and forcing one into "accelerating" or "steady" would mis-translate.
 
@@ -279,14 +279,14 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Test: clean logistic / exponential / linear → still classify decisively (power-law does not steal weight)
 - README "Failure modes / Polynomial" mitigation rewritten — no manual threshold tuning needed
 
-**Files.** [_fit.py](src/project_verge/_fit.py), [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), [_summary.py](src/project_verge/_summary.py), tests, [README.md](README.md)
+**Files.** [_fit.py](../../src/project_verge/_fit.py), [_api.py](../../src/project_verge/_api.py), [_types.py](../../src/project_verge/_types.py), [_summary.py](../../src/project_verge/_summary.py), tests, [README.md](../../README.md)
 
 ---
 
 ### T-28: Auto-downgrade verdict to indeterminate when weight CI is too wide
 **Category:** Methodology + Code · **Effort:** S · **Depends on:** T-07 · **Status:** Done in commit `ecab902`
 
-**Problem.** Surfaced by writing the [README's "Failure modes / Random-walk-like or unstructured series"](README.md) section in T-10. Random-walk-like data (nondecreasing cumulative noise) produces a confident-looking verdict line — `Verdict: leveling off (logistic, 0.78 confidence; 90% CI [0.35, 1.00])`. T-07's weight CI is wide, signaling fragility, but the headline still reads "0.78 confidence." A user not paying close attention to the CI suffix can be misled by the headline. The CI is the load-bearing honesty signal but it is too easy to skip past.
+**Problem.** Surfaced by writing the [README's "Failure modes / Random-walk-like or unstructured series"](../../README.md) section in T-10. Random-walk-like data (nondecreasing cumulative noise) produces a confident-looking verdict line — `Verdict: leveling off (logistic, 0.78 confidence; 90% CI [0.35, 1.00])`. T-07's weight CI is wide, signaling fragility, but the headline still reads "0.78 confidence." A user not paying close attention to the CI suffix can be misled by the headline. The CI is the load-bearing honesty signal but it is too easy to skip past.
 
 **Proposal.** Add a new indeterminate gate that fires when the bootstrap weight CI on the winning model spans more than a configurable threshold (default ~0.40 — clean cases hit ≈ 0, noisy real-data ≈ 0.05–0.20, random walks ≈ 0.65). Maps to new `indeterminate_reason = "fragile_verdict"`. Place in the precedence chain after `signal_disagreement` (it is a fallback for cases that pass all earlier gates but still produce unstable verdicts under resampling).
 
@@ -299,7 +299,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Test: clean logistic / linear / exponential → not flagged
 - README "Failure modes / Random-walk-like" rewritten — the gate is now automatic; users no longer need to read the CI suffix to catch this
 
-**Files.** [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), [_summary.py](src/project_verge/_summary.py), tests, [README.md](README.md)
+**Files.** [_api.py](../../src/project_verge/_api.py), [_types.py](../../src/project_verge/_types.py), [_summary.py](../../src/project_verge/_summary.py), tests, [README.md](../../README.md)
 
 ---
 
@@ -318,7 +318,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - README explains the choice
 - Test: AICc weights differ from BIC weights as expected on small n
 
-**Files.** [_fit.py](src/project_verge/_fit.py), [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), tests
+**Files.** [_fit.py](../../src/project_verge/_fit.py), [_api.py](../../src/project_verge/_api.py), [_types.py](../../src/project_verge/_types.py), tests
 
 ---
 
@@ -334,14 +334,14 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Warnings appended to `fit_warnings` (or new `assumption_warnings`) when p < 0.05
 - Tests on known violators
 
-**Files.** [_diagnostics.py](src/project_verge/_diagnostics.py), [_types.py](src/project_verge/_types.py), tests
+**Files.** [_diagnostics.py](../../src/project_verge/_diagnostics.py), [_types.py](../../src/project_verge/_types.py), tests
 
 ---
 
 ### T-14: Tie indeterminate threshold to documented evidence bands
 **Category:** Methodology · **Effort:** S · **Status:** Done in commit `3cdde75`
 
-**Problem.** The 0.70 cutoff in [_api.py:53](src/project_verge/_api.py#L53) is a magic number that corresponds to roughly ΔBIC ≈ 1.7 — Kass & Raftery's "barely worth mentioning" band.
+**Problem.** The 0.70 cutoff in [_api.py:53](../../src/project_verge/_api.py#L53) is a magic number that corresponds to roughly ΔBIC ≈ 1.7 — Kass & Raftery's "barely worth mentioning" band.
 
 **Proposal.** Replace the magic number with an `evidence_strength` parameter mapping to documented bands (`"positive"` ΔBIC > 2, `"strong"` > 6, `"decisive"` > 10). Default to `"strong"`.
 
@@ -350,14 +350,14 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Mapping documented in docstring and README
 - Existing tests adjusted (or pinned to `"positive"` for back-compat)
 
-**Files.** [_api.py](src/project_verge/_api.py), [README.md](README.md)
+**Files.** [_api.py](../../src/project_verge/_api.py), [README.md](../../README.md)
 
 ---
 
 ### T-15: Smoothing / noise-tolerance path for non-monotone data
 **Category:** Methodology + Code · **Effort:** M · **Status:** Done in commit `99d4ff7`
 
-**Problem.** [_fit.py:39-40](src/project_verge/_fit.py#L39-L40) rejects every real-world series. Most monthly time series have noise.
+**Problem.** [_fit.py:39-40](../../src/project_verge/_fit.py#L39-L40) rejects every real-world series. Most monthly time series have noise.
 
 **Proposal.** Add `allow_smoothing` parameter; when True, apply a small rolling-median or LOWESS smoother before validation, log the action in the result. Keep default strict.
 
@@ -369,14 +369,14 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Default behavior unchanged
 - Tests on known noisy real-world data (T-11 fixture works)
 
-**Files.** [_fit.py](src/project_verge/_fit.py), [_api.py](src/project_verge/_api.py), [_types.py](src/project_verge/_types.py), tests
+**Files.** [_fit.py](../../src/project_verge/_fit.py), [_api.py](../../src/project_verge/_api.py), [_types.py](../../src/project_verge/_types.py), tests
 
 ---
 
 ### T-16: Multi-start optimization for the logistic fit
 **Category:** Code · **Effort:** S · **Status:** Done in commit `fcc8342`
 
-**Problem.** [_fit.py:168-178](src/project_verge/_fit.py#L168-L178) uses a single heuristic initial guess; on noisy or partial-S data, the optimizer can land in local minima.
+**Problem.** [_fit.py:168-178](../../src/project_verge/_fit.py#L168-L178) uses a single heuristic initial guess; on noisy or partial-S data, the optimizer can land in local minima.
 
 **Proposal.** Run 5–10 starts varying K and t0 across plausible ranges; keep the best RSS.
 
@@ -384,14 +384,14 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - `n_starts` parameter (default 8)
 - Tests on noisy partial-S series where single-start currently produces worse RSS
 
-**Files.** [_fit.py](src/project_verge/_fit.py), tests
+**Files.** [_fit.py](../../src/project_verge/_fit.py), tests
 
 ---
 
 ### T-17: Strengthen tests
 **Category:** Code · **Effort:** M · **Depends on:** T-11 (soft, for fixture) · **Status:** Done in commit `eff41d2`
 
-**Problem.** [tests/test_analysis.py](tests/test_analysis.py) covers happy paths only. No noise tests, no wrong-model robustness tests, no calibration test.
+**Problem.** [tests/test_analysis.py](../../tests/test_analysis.py) covers happy paths only. No noise tests, no wrong-model robustness tests, no calibration test.
 
 **Proposal.**
 - Noisy variants of existing happy-path tests at multiple SNRs (seeded)
@@ -404,14 +404,14 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - New test files / sections cover the above
 - Failing cases surface as warnings or indeterminate, never as exceptions
 
-**Files.** [tests/](tests/)
+**Files.** [tests/](../../tests/)
 
 ---
 
 ### T-18: Better `forecast_mae` aggregator
 **Category:** Code · **Effort:** S · **Status:** Done in commit `0509163`
 
-**Problem.** [_diagnostics.py:59-94](src/project_verge/_diagnostics.py#L59-L94) returns `inf` if any single rolling fit fails to converge — destroying signal from the converged forecasts.
+**Problem.** [_diagnostics.py:59-94](../../src/project_verge/_diagnostics.py#L59-L94) returns `inf` if any single rolling fit fails to converge — destroying signal from the converged forecasts.
 
 **Proposal.** Use median; also report `fraction_converged`. Consider a tuple or a dataclass field.
 
@@ -419,7 +419,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - `forecast_mae_*` fields restructured (e.g. `forecast_median_log_error_*` and `forecast_convergence_rate_*`)
 - Tests: synthetic series where one window fails — overall metric remains finite and informative
 
-**Files.** [_diagnostics.py](src/project_verge/_diagnostics.py), [_types.py](src/project_verge/_types.py), tests
+**Files.** [_diagnostics.py](../../src/project_verge/_diagnostics.py), [_types.py](../../src/project_verge/_types.py), tests
 
 ---
 
@@ -435,7 +435,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 - Plot committed and referenced in README
 - README has a "How calibrated are these probabilities?" section
 
-**Files.** new `examples/calibration.py`, new `docs/calibration.png`, [README.md](README.md)
+**Files.** new `examples/calibration.py`, new `docs/calibration.png`, [README.md](../../README.md)
 
 ---
 
@@ -444,18 +444,18 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ### T-20: `Literal` / `Enum` types for `model_name` and `preferred_model`
 **Category:** Code · **Effort:** S · **Status:** Done in commit `993bc56`
 
-Replace `str` annotations on [_types.py:13](src/project_verge/_types.py#L13) and [_types.py:46](src/project_verge/_types.py#L46) with `typing.Literal[...]`. Catches typos at type-check time.
+Replace `str` annotations on [_types.py:13](../../src/project_verge/_types.py#L13) and [_types.py:46](../../src/project_verge/_types.py#L46) with `typing.Literal[...]`. Catches typos at type-check time.
 
-**Files.** [_types.py](src/project_verge/_types.py)
+**Files.** [_types.py](../../src/project_verge/_types.py)
 
 ---
 
 ### T-21: `npt.ArrayLike` type hints
 **Category:** Code · **Effort:** S · **Status:** Done in commit `e860e42`
 
-`Sequence[float]` in [_fit.py:17-18](src/project_verge/_fit.py#L17-L18) admits strings and isn't the numpy convention. Switch to `numpy.typing.ArrayLike`.
+`Sequence[float]` in [_fit.py:17-18](../../src/project_verge/_fit.py#L17-L18) admits strings and isn't the numpy convention. Switch to `numpy.typing.ArrayLike`.
 
-**Files.** [_fit.py](src/project_verge/_fit.py)
+**Files.** [_fit.py](../../src/project_verge/_fit.py)
 
 ---
 
@@ -464,16 +464,16 @@ Replace `str` annotations on [_types.py:13](src/project_verge/_types.py#L13) and
 
 `min_points` is validated in both `prepare_inputs` and `_fit_model`. The reason is sound (rolling-window callers) but the surface is confusing. Either add a clarifying comment, or factor so only one path validates.
 
-**Files.** [_fit.py](src/project_verge/_fit.py)
+**Files.** [_fit.py](../../src/project_verge/_fit.py)
 
 ---
 
 ### T-23: Make `assumptions` field structured (or remove)
 **Category:** Code · **Effort:** S · **Depends on:** T-15 · **Status:** Done in commit `ab5695a`
 
-[_api.py:62-67](src/project_verge/_api.py#L62-L67) returns a fixed prose tuple regardless of what actually happened during the analysis. Either remove (it's docstring material) or convert to structured flags: `{"used_lognormal": True, "n_observations": 18, "smoothing_applied": False, "criterion": "aicc"}`.
+[_api.py:62-67](../../src/project_verge/_api.py#L62-L67) returns a fixed prose tuple regardless of what actually happened during the analysis. Either remove (it's docstring material) or convert to structured flags: `{"used_lognormal": True, "n_observations": 18, "smoothing_applied": False, "criterion": "aicc"}`.
 
-**Files.** [_types.py](src/project_verge/_types.py), [_api.py](src/project_verge/_api.py)
+**Files.** [_types.py](../../src/project_verge/_types.py), [_api.py](../../src/project_verge/_api.py)
 
 ---
 
@@ -482,7 +482,7 @@ Replace `str` annotations on [_types.py:13](src/project_verge/_types.py#L13) and
 
 Plain-English definitions for: BIC / AICc, log-normal observation model, identifiability, carrying capacity, posterior weight, indeterminate. Either a new `GLOSSARY.md` or a section in README.
 
-**Files.** new `GLOSSARY.md` or [README.md](README.md)
+**Files.** new `GLOSSARY.md` or [README.md](../../README.md)
 
 ---
 
