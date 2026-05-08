@@ -38,7 +38,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-14 | Tie indeterminate threshold to documented evidence bands | P2 | M | S | — | **done** (`3cdde75`) |
 | T-15 | Smoothing / noise-tolerance path for non-monotone data | P2 | M+C | M | — | **done** (`99d4ff7`) |
 | T-16 | Multi-start optimization for the logistic fit | P2 | C | S | — | **done** (`fcc8342`) |
-| T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) | open |
+| T-17 | Strengthen tests (noise, wrong-model, calibration) | P2 | C | M | T-11 (soft) | **done** (`eff41d2`) |
 | T-18 | Better `forecast_mae` aggregator (median + frac_converged) | P2 | C | S | — | open |
 | T-19 | Calibration evidence in docs | P2 | D | M | T-17 | open |
 | T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | open |
@@ -389,7 +389,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 ---
 
 ### T-17: Strengthen tests
-**Category:** Code · **Effort:** M · **Depends on:** T-11 (soft, for fixture)
+**Category:** Code · **Effort:** M · **Depends on:** T-11 (soft, for fixture) · **Status:** Done in commit `eff41d2`
 
 **Problem.** [tests/test_analysis.py](tests/test_analysis.py) covers happy paths only. No noise tests, no wrong-model robustness tests, no calibration test.
 
