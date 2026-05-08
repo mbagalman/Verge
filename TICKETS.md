@@ -43,7 +43,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-19 | Calibration evidence in docs | P2 | D | M | T-17 | **done** (`904907e`) |
 | T-20 | `Literal`/`Enum` types for `model_name` and `preferred_model` | P3 | C | S | — | **done** (`993bc56`) |
 | T-21 | `npt.ArrayLike` type hints | P3 | C | S | — | **done** (`e860e42`) |
-| T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | open |
+| T-22 | Resolve `min_points` duplicate validation | P3 | C | S | — | **done** (`37ad665`) |
 | T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | open |
 | T-24 | Glossary in docs | P3 | D | S | — | open |
 | T-25 | `CHANGELOG.md` | P3 | D | S | — | open |
@@ -460,7 +460,7 @@ Replace `str` annotations on [_types.py:13](src/project_verge/_types.py#L13) and
 ---
 
 ### T-22: Resolve `min_points` duplicate validation
-**Category:** Code · **Effort:** S
+**Category:** Code · **Effort:** S · **Status:** Done in commit `37ad665`
 
 `min_points` is validated in both `prepare_inputs` and `_fit_model`. The reason is sound (rolling-window callers) but the surface is confusing. Either add a clarifying comment, or factor so only one path validates.
 
