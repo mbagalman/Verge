@@ -157,6 +157,27 @@ def test_fit_functions_enforce_custom_min_points():
         fit_logistic(time, values, min_points=6)
 
 
+def test_internal_fit_model_invariant_guard_distinguishes_from_user_input_error():
+    # Defense-in-depth: if a future internal caller forgets to validate
+    # before calling the lower-level fit_*_model functions, they raise
+    # RuntimeError with a "internal precondition violated" message --
+    # clearly distinct from the user-facing ValueError that prepare_inputs
+    # raises ("at least N observations are required"). This pins the
+    # invariant introduced when T-22 deduplicated the min_points check.
+    from project_verge._fit import fit_logistic_model, fit_power_law_model
+
+    time = np.linspace(0.0, 3.0, 4)
+    values = 2.0 * np.exp(0.2 * time)
+
+    # Call the internal fit_*_model directly, requesting a min_points
+    # larger than the array we passed.
+    with pytest.raises(RuntimeError, match="internal precondition violated"):
+        fit_logistic_model(time, values, min_points=8)
+
+    with pytest.raises(RuntimeError, match="internal precondition violated"):
+        fit_power_law_model(time, values, min_points=8)
+
+
 @pytest.mark.parametrize("prior", [float("nan"), float("inf")])
 def test_analysis_rejects_non_finite_priors(prior):
     time, values = _exp_series()

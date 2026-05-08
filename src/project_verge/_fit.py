@@ -211,8 +211,16 @@ def fit_power_law_model(
     misclassifying as logistic.
     """
     if len(time) < min_points:
-        raise ValueError(
-            f"power-law fitting requires at least {min_points} points"
+        # Internal invariant guard. ``prepare_inputs`` enforces the user-facing
+        # ``min_points`` check on the public path; the bootstrap loop in
+        # _uncertainty.py and the forward-chaining loop in _diagnostics.py
+        # ensure the precondition by construction (resample size = input size;
+        # split_index >= min_train). If this fires, an internal caller is
+        # violating the precondition -- it is not a user-input error.
+        raise RuntimeError(
+            f"fit_power_law_model: internal precondition violated -- "
+            f"len(time)={len(time)} < min_points={min_points}. "
+            "Callers must validate before invoking."
         )
 
     n = len(values)
@@ -261,10 +269,19 @@ def _fit_model(
     bounds: Tuple[np.ndarray, np.ndarray],
     min_points: int,
 ) -> ModelFit:
-    # Internal callers also use these fitters directly on smaller rolling windows,
-    # so we keep the minimum-length guard here instead of relying only on prepare_inputs.
+    # Internal invariant guard. ``prepare_inputs`` enforces the user-facing
+    # ``min_points`` check on the public path; the bootstrap loop in
+    # _uncertainty.py and the forward-chaining loop in _diagnostics.py
+    # ensure the precondition by construction (resample size = input size;
+    # split_index >= min_train, with min_train passed as min_points). If
+    # this fires, an internal caller is violating the precondition -- it
+    # is not a user-input error.
     if len(time) < min_points:
-        raise ValueError(f"{model_name} fitting requires at least {min_points} points")
+        raise RuntimeError(
+            f"_fit_model({model_name}): internal precondition violated -- "
+            f"len(time)={len(time)} < min_points={min_points}. "
+            "Callers must validate before invoking."
+        )
     if len(initial_guesses) == 0:
         raise ValueError("at least one initial guess is required")
 
