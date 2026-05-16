@@ -290,10 +290,15 @@ def _fit_model(
         return np.log(values) - np.log(prediction)
 
     # Multi-start loop: run least_squares from each initial guess and keep the
-    # lowest-RSS converged solution. For ``len(initial_guesses) == 1`` this
-    # collapses to the previous single-start behaviour exactly.
-    best_result = None
-    best_rss = float("inf")
+    # lowest-RSS converged solution. A non-converged result is retained as a
+    # fallback so the returned ModelFit still carries parameters and fitted
+    # values for inspection, but its information-criterion scores are pinned
+    # to +inf below so it cannot win the posterior-weight competition in
+    # _posterior_model_weights.
+    best_converged_result = None
+    best_converged_rss = float("inf")
+    best_failed_result = None
+    best_failed_rss = float("inf")
     last_failure_message = None
 
     for guess in initial_guesses:
@@ -308,14 +313,19 @@ def _fit_model(
             fitted_values = np.clip(model_func(time, result.x), _TINY, None)
             iter_resids = np.log(values) - np.log(fitted_values)
             rss = float(np.sum(iter_resids ** 2))
-            if rss < best_rss:
-                best_rss = rss
-                best_result = result
+            if result.success:
+                if rss < best_converged_rss:
+                    best_converged_rss = rss
+                    best_converged_result = result
+            else:
+                if rss < best_failed_rss:
+                    best_failed_rss = rss
+                    best_failed_result = result
         except Exception as exc:
             last_failure_message = f"{model_name} fit failed: {exc}"
             continue
 
-    if best_result is None:
+    if best_converged_result is None and best_failed_result is None:
         warnings = [last_failure_message] if last_failure_message else []
         return ModelFit(
             model_name=model_name,
@@ -329,21 +339,35 @@ def _fit_model(
             warnings=tuple(warnings),
         )
 
+    converged = best_converged_result is not None
+    best_result = best_converged_result if converged else best_failed_result
     fitted_values = np.clip(model_func(time, best_result.x), _TINY, None)
-    resids = np.log(values) - np.log(fitted_values)
-    rss = float(np.sum(resids ** 2))
-    sigma2 = max(rss / len(values), 1e-12)
-    log_likelihood = -0.5 * len(values) * (np.log(2.0 * np.pi * sigma2) + 1.0)
-    # Count the observation-noise scale parameter alongside the curve parameters
-    # so the information criteria reflect the full log-normal observation model.
-    parameter_count = len(parameter_names) + 1
-    n = len(values)
-    bic = parameter_count * np.log(n) - 2.0 * log_likelihood
-    aicc = _aicc(log_likelihood, parameter_count, n)
-    log_r_squared = _log_space_r_squared(values, rss)
     warnings = []
-    if not best_result.success:
+
+    if converged:
+        resids = np.log(values) - np.log(fitted_values)
+        rss = float(np.sum(resids ** 2))
+        sigma2 = max(rss / len(values), 1e-12)
+        log_likelihood = -0.5 * len(values) * (np.log(2.0 * np.pi * sigma2) + 1.0)
+        # Count the observation-noise scale parameter alongside the curve
+        # parameters so the information criteria reflect the full log-normal
+        # observation model.
+        parameter_count = len(parameter_names) + 1
+        n = len(values)
+        bic = parameter_count * np.log(n) - 2.0 * log_likelihood
+        aicc = _aicc(log_likelihood, parameter_count, n)
+        log_r_squared = _log_space_r_squared(values, rss)
+    else:
+        # No start converged. Pin the IC scores to +inf so this fit gets zero
+        # weight in _posterior_model_weights and is treated as failing the
+        # min_fit_quality gate. The parameter values are still exposed so that
+        # plotting and debugging can see where the optimizer landed.
         warnings.append(best_result.message)
+        log_likelihood = float("-inf")
+        bic = float("inf")
+        aicc = float("inf")
+        log_r_squared = float("-inf")
+
     return ModelFit(
         model_name=model_name,
         parameters={name: float(value) for name, value in zip(parameter_names, best_result.x)},
@@ -352,7 +376,7 @@ def _fit_model(
         bic=float(bic),
         aicc=float(aicc),
         log_r_squared=float(log_r_squared),
-        converged=bool(best_result.success),
+        converged=converged,
         warnings=tuple(warnings),
     )
 
