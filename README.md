@@ -362,10 +362,10 @@ Plain-English definitions for the statistics terms used here — *posterior weig
 - `examples/demo_growth_analysis.py`: runnable demonstration on synthetic series
 - `examples/demo_plot.py`: matplotlib visualization demo
 - `examples/world_population.py` (+ `examples/data/un_population.csv`): real-data worked example on world population
-- `docs/methodology.md`: design notebook walking through the diagnostic intuitions
 - `docs/glossary.md`: plain-English definitions for the statistics terms in the API
 - `docs/internal/PROJECT_PLAN.md`: project plan and decision log (development-facing)
 - `docs/internal/TICKETS.md`: prioritized backlog of methodology, code, and docs work (development-facing)
+- `docs/internal/methodology_notes.md`: preserved pre-package design notebook (historical; superseded by the README's *Interpreting the Verdict* and *Failure modes* sections)
 - `CHANGELOG.md`: notable user-visible changes, in Keep-a-Changelog format
 
 ## Development

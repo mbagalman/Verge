@@ -252,7 +252,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 
 **Problem.** Examples use synthetic curves only. Trust comes from real-data demos.
 
-**Proposal.** Commit a small CSV (UN World Population Prospects subset, or another well-known public source) and an `examples/` script that reproduces the population analysis from [docs/methodology.md](../methodology.md).
+**Proposal.** Commit a small CSV (UN World Population Prospects subset, or another well-known public source) and an `examples/` script that reproduces the population analysis from [docs/internal/methodology_notes.md](methodology_notes.md).
 
 **Acceptance criteria.**
 - `examples/data/un_population.csv` with provenance comment in the script

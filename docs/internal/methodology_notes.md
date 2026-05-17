@@ -1,4 +1,22 @@
-Project Verge
+# Preserved design notebook
+
+> **Status: historical.** These are pre-package design notes that walked through the diagnostic intuitions behind Project Verge. They pre-date the implementation and have **not** been kept in sync with the shipped library.
+>
+> The snippets here use ad-hoc `scipy.optimize.curve_fit` and `statsmodels` calls, not the [`project_verge.analyze_growth()`](../../README.md#api) API; they describe a two-model exponential-vs-logistic frame, not the current four-way (exponential / linear / logistic / power-law) competition; they refer to BIC where the shipped default is AICc; and several time-sensitive observations are framed as "up to 2026."
+>
+> For the current methodology, see:
+>
+> - [README — Interpreting the Verdict](../../README.md#interpreting-the-verdict) — the precedence chain that decides between a decisive verdict and `indeterminate (reason: ...)`
+> - [README — Failure modes](../../README.md#failure-modes) — what happens when the input violates the v1 contract
+> - [README — How calibrated are these probabilities?](../../README.md#how-calibrated-are-these-probabilities) — empirical accuracy of the headline confidence number
+> - [docs/glossary.md](../glossary.md) — plain-English definitions of BIC, AICc, posterior weight, identifiability, carrying capacity, and the other terms surfaced in the API
+> - [docs/internal/PROJECT_PLAN.md](PROJECT_PLAN.md) and [docs/internal/TICKETS.md](TICKETS.md) — design rationale and the methodology backlog
+>
+> This file is kept under `docs/internal/` so the original framing remains available for anyone tracing the project's evolution, but it should not be treated as a user-facing methodology reference.
+
+---
+
+# Project Verge
 
 Distinguishing between exponential and logistic growth (an S-curve) during the early "rapid growth" phase is a classic problem in predictive modeling. In the early stages, both functions exhibit high positive first and second derivatives, making them nearly indistinguishable through standard curve-fitting alone.
 

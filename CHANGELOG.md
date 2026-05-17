@@ -60,7 +60,7 @@ Initial release.
 ### Documentation and examples
 
 - README reframed around the user's question ("is this leveling off, or still going up?") with Quick Start, Predicting future values, Visualizing the result, Worked example: world population, How calibrated are these probabilities?, Failure modes, API, Input Contract, and Interpreting the Verdict sections.
-- `docs/methodology.md` design notebook walking through the diagnostic intuitions.
+- `docs/internal/methodology_notes.md` preserved pre-package design notebook walking through the diagnostic intuitions (kept under `docs/internal/` because the snippets are ad-hoc and pre-date the shipped API; the README's *Interpreting the Verdict* and *Failure modes* sections are the canonical methodology surfaces).
 - `docs/glossary.md` with plain-English definitions for ~30 statistics terms in the API.
 - `docs/calibration.png` reproducible from `examples/calibration.py` (900 seeded synthetic trials).
 - `examples/demo_growth_analysis.py` for synthetic series, `examples/demo_plot.py` for the visualization helper, `examples/world_population.py` for a real-data worked example using UN World Population Prospects estimates from 1750 to 2022.
