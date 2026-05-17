@@ -4,7 +4,7 @@ Project Verge answers one focused question about a positive, growing time series
 
 > **Is there evidence this is leveling off, or evidence it's still going up?**
 
-It compares three candidate trajectories — pure exponential growth, linear growth, and the early part of a logistic S-curve — using posterior model weights derived from BIC under a shared log-normal observation model, and returns one of four verdicts:
+It compares three candidate trajectories — pure exponential growth, linear growth, and the early part of a logistic S-curve — using posterior model weights from AICc (the default; switchable to BIC via `criterion="bic"`) under a shared log-normal observation model, and returns one of four verdicts:
 
 - **accelerating** — exponential growth fits best; the rate is increasing
 - **steady** — linear growth fits best; growing at a constant rate, no acceleration and no asymptote in the data
@@ -16,15 +16,15 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
 ## What v1 answers
 
 - The verdict (`accelerating` / `steady` / `leveling off` / `indeterminate`) and a one-line `summary()` you can `print()`.
-- Posterior model weights `p_exponential`, `p_linear`, `p_logistic`, and `p_power_law` as approximate model-comparison evidence (BIC under a shared log-normal observation model). Power-law is a diagnostic-only candidate — it competes for BIC weight but never becomes the preferred verdict; when it wins the result is `indeterminate (reason: power_law_shape)`.
+- Posterior model weights `p_exponential`, `p_linear`, `p_logistic`, and `p_power_law` as approximate model-comparison evidence (AICc by default, or BIC via `criterion="bic"`, under a shared log-normal observation model). Power-law is a diagnostic-only candidate — it competes for criterion weight but never becomes the preferred verdict; when it wins the result is `indeterminate (reason: power_law_shape)`.
 - When the logistic verdict is the focus, a pair-bootstrap percentile interval for the carrying capacity `K`, the inflection time `t0`, and predicted values at any horizons you supply.
 - A structured `indeterminate_reason` so callers can branch on *why* a verdict is being withheld:
   - `neither_model_fits` — none of the candidate models (exponential, linear, logistic, power-law) explains the data well on the log scale
   - `power_law_shape` — the data is best described by a power-law shape (`y ≈ a · t^k`), which v1 has no clean verdict for; this catches polynomial growth that would otherwise misclassify as logistic
-  - `ambiguous_evidence` — no model is decisively preferred by BIC
+  - `ambiguous_evidence` — no model is decisively preferred by the chosen criterion
   - `logistic_unidentifiable` — the logistic bend is not pinned down by the observed window
-  - `signal_disagreement` — BIC prefers logistic but the supporting diagnostics (per-capita slope, log-residual curvature, forecast MAE) do not all agree
-  - `fragile_verdict` — BIC favors a single model but the bootstrap CI on its weight is wider than `max_weight_ci_width` (default 0.40), meaning the verdict could swap under resampling
+  - `signal_disagreement` — the criterion prefers logistic but the supporting diagnostics (per-capita slope, log-residual curvature, forecast MAE) do not all agree
+  - `fragile_verdict` — the criterion favors a single model but the bootstrap CI on its weight is wider than `max_weight_ci_width` (default 0.40), meaning the verdict could swap under resampling
 - A `Diagnostics.signal_agreement` flag set giving the three supporting signals individually, plus `levelling_off_votes` (0–3) for the aggregate.
 - A `weight_intervals` field on the result with bootstrap percentile intervals on `p_exponential`, `p_linear`, and `p_logistic` so the headline confidence number itself comes with a confidence interval.
 - Automatic checks of the log-normal observation assumption: Shapiro-Wilk on the leading-model log-residuals and Ljung-Box for serial correlation, with `Diagnostics.residual_normality_pvalue`, `Diagnostics.residual_autocorr_pvalue`, and human-readable `Diagnostics.assumption_warnings` when either p-value drops below 0.05.
@@ -274,7 +274,7 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 
 **Signature.** Series shaped like `y ∝ t^k` for some `k > 0` — cubic, square-root, anything that is not pure exponential, linear, or sigmoid.
 
-**Library response.** Verge fits a power-law candidate (`y = a · (t + 1)^k`) alongside the three primary models. When BIC picks power-law as the leading shape, the verdict is forced to `indeterminate (reason: power_law_shape)`, since v1's verdict surface (still growing / steady / leveling off) has no clean answer for power-law growth. A cubic series like `y = t**3` returns `indeterminate (reason: power_law_shape)` at the default `min_fit_quality`.
+**Library response.** Verge fits a power-law candidate (`y = a · (t + 1)^k`) alongside the three primary models. When the criterion picks power-law as the leading shape, the verdict is forced to `indeterminate (reason: power_law_shape)`, since v1's verdict surface (still growing / steady / leveling off) has no clean answer for power-law growth. A cubic series like `y = t**3` returns `indeterminate (reason: power_law_shape)` at the default `min_fit_quality`.
 
 **Mitigation.** None needed: at the default threshold the library now flags power-law growth honestly rather than misclassifying it as logistic. If you want the underlying power-law fit, it lives at `result.power_law_fit` and the weight at `result.p_power_law`.
 
@@ -325,7 +325,7 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 **Library response.** Two automatic gates catch this in v1:
 
 - **Power-law shape detection.** Cumulative-noise series have shape statistics that are well-approximated by a power-law fit, so most random-walk-like seeds now classify as `indeterminate (reason: power_law_shape)` — no false confidence on the headline.
-- **Fragile-verdict gate.** When a verdict survives the other indeterminate checks but its bootstrap weight CI is wider than `max_weight_ci_width` (default 0.40), the verdict is downgraded to `indeterminate (reason: fragile_verdict)`. This catches cases where BIC picks a model decisively but resampling shows the choice is unstable.
+- **Fragile-verdict gate.** When a verdict survives the other indeterminate checks but its bootstrap weight CI is wider than `max_weight_ci_width` (default 0.40), the verdict is downgraded to `indeterminate (reason: fragile_verdict)`. This catches cases where the criterion picks a model decisively but resampling shows the choice is unstable.
 
 **Mitigation.** None needed for typical inputs at default thresholds; the two gates handle this automatically. Tune `max_weight_ci_width` lower (toward 0.0) for stricter rejection of fragile verdicts, or higher (toward 1.0) to disable the gate. Cross-checking with domain knowledge is still wise — Verge can only see the data it is given.
 
@@ -343,11 +343,11 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 
 The verdict is one of four categorical labels — `accelerating`, `steady`, `leveling off`, or `indeterminate` — chosen from the leading model when a model is clearly preferred *and* the underlying fit passes a quality floor *and* (for logistic) the curve is identified by the observed window. If any of those checks fails, the verdict is forced to `indeterminate` with a structured `indeterminate_reason`.
 
-The reported confidence is the posterior model weight of the winning model, approximated from BIC under the shared log-normal observation model. Those weights are:
+The reported confidence is the posterior model weight of the winning model, approximated from AICc (default; or BIC when `criterion="bic"`) under the shared log-normal observation model. Those weights are:
 
 - conditioned on exponential, linear, logistic, and power-law being the four candidates (power-law is diagnostic-only — when it wins, the verdict is `indeterminate (reason: power_law_shape)` rather than a new fourth verdict)
 - conditioned on the log-normal observation model
-- approximate, because BIC is used as a tractable proxy for full Bayesian model evidence
+- approximate, because the information criterion is used as a tractable proxy for full Bayesian model evidence
 
 They should be read as model-comparison evidence, not as a universal forecast probability that a real-world process must (or must not) plateau. The v1 model space is narrow on purpose; the [TICKETS](docs/internal/TICKETS.md) backlog tracks planned extensions to richer S-curve families.
 
