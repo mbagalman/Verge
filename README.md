@@ -195,9 +195,9 @@ Run it yourself with `python examples/world_population.py` to see the side-by-si
 
 Runs the full analysis and returns a `GrowthAnalysis` object.
 
-`min_fit_quality` is the log-space R² floor that each candidate model is held to. When *both* models fall below it, the verdict is forced to `indeterminate` with `indeterminate_reason = "neither_model_fits"`, so a polynomial or other out-of-family series cannot quietly produce a confident-looking exponential-vs-logistic split.
+`min_fit_quality` is the log-space R² floor that each candidate model is held to. When *all four* candidates (exponential, linear, logistic, power-law) fall below it, the verdict is forced to `indeterminate` with `indeterminate_reason = "neither_model_fits"`, so an out-of-family series cannot quietly produce a confident-looking split among models that all fit it poorly.
 
-`GrowthAnalysis.indeterminate_reason` is `None` when the verdict is decisive, and otherwise one of `"neither_model_fits"`, `"ambiguous_evidence"`, or `"logistic_unidentifiable"`.
+`GrowthAnalysis.indeterminate_reason` is `None` when the verdict is decisive, and otherwise one of the six structured values listed in the [What v1 answers](#what-v1-answers) section above: `"neither_model_fits"`, `"power_law_shape"`, `"ambiguous_evidence"`, `"logistic_unidentifiable"`, `"signal_disagreement"`, or `"fragile_verdict"`.
 
 `criterion` selects the information criterion used for the four-way model comparison: `"aicc"` (default) or `"bic"`. AICc applies the standard small-sample correction `+ 2k(k+1)/(n−k−1)` on top of AIC; for the typical input sizes Verge sees (n = 8–30) the correction is meaningful and matches the small-sample-regression literature's recommendation. The two criteria pick the same model on clean data with a clear winner; on borderline cases AICc tends to penalize the higher-parameter logistic / power-law candidates more strongly than BIC at small n.
 
@@ -221,19 +221,19 @@ Below the threshold the verdict is forced to `indeterminate (reason: ambiguous_e
 
 `GrowthAnalysis.diagnostics.fit_warnings` contains optimizer or fit-process warnings; `GrowthAnalysis.diagnostics.identifiability_warnings` contains interpretation warnings specific to whether the logistic bend is actually identified by the observed window; `GrowthAnalysis.diagnostics.assumption_warnings` contains warnings from the log-normal residual checks (Shapiro-Wilk normality and Ljung-Box autocorrelation tests on the leading-model log-residuals). The assumption checks are automatically skipped when residuals are at the floating-point floor (clean synthetic inputs), so they do not over-fire on optimizer noise.
 
-### `fit_exponential(time, values, *, min_points=8)`
+### `fit_exponential(time, values, *, min_points=8, min_relative_range=0.01)`
 
-Fits the exponential model and returns a `ModelFit`.
+Fits the exponential model and returns a `ModelFit`. `min_relative_range` is the same up-front scope check `analyze_growth` applies (see above).
 
-### `fit_linear(time, values, *, min_points=8)`
+### `fit_linear(time, values, *, min_points=8, min_relative_range=0.01)`
 
 Fits the linear model `y = a + b*t` (in y-units, with residuals computed in log-space for consistency with the other models) and returns a `ModelFit`.
 
-### `fit_logistic(time, values, *, min_points=8)`
+### `fit_logistic(time, values, *, min_points=8, n_starts=1, min_relative_range=0.01)`
 
-Fits the logistic model and returns a `ModelFit`.
+Fits the logistic model and returns a `ModelFit`. The single-fit helper defaults to `n_starts=1` so it stays cheap by default; pass `n_starts=8` to match the multi-start `analyze_growth` uses (see the `n_starts` paragraph under `analyze_growth` above for the rationale).
 
-### `fit_power_law(time, values, *, min_points=8)`
+### `fit_power_law(time, values, *, min_points=8, min_relative_range=0.01)`
 
 Fits the power-law model `y = a * (t + 1)**k` via OLS in log-log space and returns a `ModelFit`. Power-law is a diagnostic-only candidate in v1; the headline verdict never becomes "power-law" (when it wins, the result is `indeterminate (reason: power_law_shape)`).
 
