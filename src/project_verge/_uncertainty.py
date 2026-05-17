@@ -16,6 +16,7 @@ from ._fit import (
     fit_power_law_model,
     linear_curve,
     logistic_curve,
+    prepare_inputs,
 )
 from ._types import BootstrapIntervals, Interval, WeightIntervals
 
@@ -49,20 +50,7 @@ def bootstrap_logistic_intervals(
     if n_boot < 0:
         raise ValueError("n_boot must be non-negative")
 
-    time_arr = np.asarray(time, dtype=float)
-    values_arr = np.asarray(values, dtype=float)
-    if time_arr.ndim != 1 or values_arr.ndim != 1:
-        raise ValueError("time and values must be one-dimensional sequences")
-    if len(time_arr) != len(values_arr):
-        raise ValueError("time and values must have the same length")
-    if len(time_arr) < _BOOTSTRAP_MIN_POINTS:
-        raise ValueError(
-            f"at least {_BOOTSTRAP_MIN_POINTS} observations are required for bootstrap"
-        )
-    if not np.all(np.isfinite(time_arr)) or not np.all(np.isfinite(values_arr)):
-        raise ValueError("time and values must contain only finite numbers")
-    if np.any(values_arr <= 0.0):
-        raise ValueError("values must be strictly positive")
+    time_norm, values_arr, origin = _prepare_bootstrap_inputs(time, values)
 
     horizons_arr = np.asarray(
         horizons if horizons is not None else (), dtype=float
@@ -70,10 +58,8 @@ def bootstrap_logistic_intervals(
     if horizons_arr.ndim != 1:
         raise ValueError("horizons must be a one-dimensional sequence")
 
-    # Fit in the same time-origin frame the rest of the package uses, so that
-    # K, r, and predicted values are interpretable in the user's units.
-    origin = float(time_arr[0])
-    time_norm = time_arr - origin
+    # Shift horizons into the same zero-origin frame the bootstrap loop fits
+    # in, so K, r, and predicted values remain interpretable in user units.
     horizons_norm = horizons_arr - origin
 
     rng = np.random.default_rng(seed)
@@ -157,13 +143,11 @@ def bootstrap_predictions(
 
     fitter, curve = _model_fitter_and_curve(model_name)
 
-    time_arr, values_arr = _prepare_bootstrap_inputs(time, values)
+    time_norm, values_arr, origin = _prepare_bootstrap_inputs(time, values)
     pred_times_arr = np.asarray(prediction_times, dtype=float)
     if pred_times_arr.ndim != 1:
         raise ValueError("prediction_times must be a one-dimensional sequence")
 
-    origin = float(time_arr[0])
-    time_norm = time_arr - origin
     pred_times_norm = pred_times_arr - origin
 
     rng = np.random.default_rng(seed)
@@ -247,9 +231,7 @@ def bootstrap_model_weights(
     if n_boot < 0:
         raise ValueError("n_boot must be non-negative")
 
-    time_arr, values_arr = _prepare_bootstrap_inputs(time, values)
-    origin = float(time_arr[0])
-    time_norm = time_arr - origin
+    time_norm, values_arr, _origin = _prepare_bootstrap_inputs(time, values)
 
     rng = np.random.default_rng(seed)
     n = len(time_norm)
@@ -337,22 +319,45 @@ def _four_way_weights(
 
 
 def _prepare_bootstrap_inputs(time, values):
-    """Validation shared between the two bootstrap entry points."""
+    """Strict input validation shared between every bootstrap entry point.
+
+    Routes through :func:`prepare_inputs` so the public bootstrap helpers
+    enforce the same growth-only contract that :func:`analyze_growth` does:
+    strictly increasing time, nondecreasing strictly positive finite values,
+    length-matched 1-D sequences. Without this, a direct caller could bypass
+    the package's stated contract and receive intervals that the main analysis
+    would refuse to produce -- and an unsorted ``time`` would make the
+    bootstrap's reported ``t0`` coordinate depend on the arbitrary first
+    element rather than the time origin.
+
+    The bootstrap-specific deviations from ``analyze_growth``'s defaults:
+
+    - ``min_points`` is ``_BOOTSTRAP_MIN_POINTS = 4`` so the bootstrap can
+      operate on sparser inputs than the public ``analyze_growth`` minimum.
+      The inner fits operate on resamples (with duplicates), not on this
+      raw input, so the stricter user-facing floor would be over-restrictive.
+    - ``min_relative_range`` is ``0.0`` because the relative-range check is
+      an ``analyze_growth``-level scope decision, not a numerical
+      precondition of the bootstrap math.
+
+    Returns ``(time_norm, values_arr, origin)`` where ``time_norm`` is the
+    zero-origin time array, ``values_arr`` is the validated values array,
+    and ``origin`` is the original ``time[0]`` so callers can shift the
+    reported ``t0`` interval back into the user's time units.
+    """
+
     time_arr = np.asarray(time, dtype=float)
     values_arr = np.asarray(values, dtype=float)
-    if time_arr.ndim != 1 or values_arr.ndim != 1:
-        raise ValueError("time and values must be one-dimensional sequences")
-    if len(time_arr) != len(values_arr):
-        raise ValueError("time and values must have the same length")
-    if len(time_arr) < _BOOTSTRAP_MIN_POINTS:
-        raise ValueError(
-            f"at least {_BOOTSTRAP_MIN_POINTS} observations are required for bootstrap"
-        )
-    if not np.all(np.isfinite(time_arr)) or not np.all(np.isfinite(values_arr)):
-        raise ValueError("time and values must contain only finite numbers")
-    if np.any(values_arr <= 0.0):
-        raise ValueError("values must be strictly positive")
-    return time_arr, values_arr
+    time_norm, values_validated = prepare_inputs(
+        time_arr,
+        values_arr,
+        min_points=_BOOTSTRAP_MIN_POINTS,
+        min_relative_range=0.0,
+    )
+    # ``prepare_inputs`` validated that time is strictly increasing, so the
+    # first element is guaranteed to be the minimum -- a safe origin choice.
+    origin = float(time_arr[0])
+    return time_norm, values_validated, origin
 
 
 def _validate_weight_priors(*priors: float) -> None:

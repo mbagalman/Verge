@@ -9,6 +9,7 @@ from project_verge import (
     analyze_growth,
     bootstrap_logistic_intervals,
     bootstrap_model_weights,
+    bootstrap_predictions,
 )
 
 
@@ -251,3 +252,77 @@ def test_summary_omits_ci_when_no_bootstrap_ran():
     assert "CI [" not in summary
     assert "still growing" not in summary  # T-05 rename
     assert "accelerating" in summary
+
+
+# ---------------------------------------------------------------------------
+# Strict-input-contract coverage: the public bootstrap helpers must enforce
+# the same growth-only contract that analyze_growth applies via prepare_inputs
+# (strictly increasing time, nondecreasing positive values), so that a direct
+# caller cannot bypass the package contract and receive intervals the main
+# analysis would refuse to produce.
+# ---------------------------------------------------------------------------
+
+
+def _call_bootstrap_logistic(time, values):
+    return bootstrap_logistic_intervals(time, values, n_boot=10, seed=0)
+
+
+def _call_bootstrap_weights(time, values):
+    return bootstrap_model_weights(time, values, n_boot=10, seed=0)
+
+
+def _call_bootstrap_predictions(time, values):
+    return bootstrap_predictions(
+        time,
+        values,
+        model_name="logistic",
+        prediction_times=[5.0],
+        n_boot=10,
+        seed=0,
+    )
+
+
+_BOOTSTRAP_ENTRY_POINTS = [
+    pytest.param(_call_bootstrap_logistic, id="bootstrap_logistic_intervals"),
+    pytest.param(_call_bootstrap_weights, id="bootstrap_model_weights"),
+    pytest.param(_call_bootstrap_predictions, id="bootstrap_predictions"),
+]
+
+
+@pytest.mark.parametrize("entry_point", _BOOTSTRAP_ENTRY_POINTS)
+def test_bootstrap_entry_points_reject_unsorted_time(entry_point):
+    # Permuted middle two points -- not strictly increasing. Without the
+    # strict check the helpers used to silently pick time[0] as origin and
+    # report a t0 coordinate that depended on the arbitrary first element.
+    time = np.array([0.0, 2.0, 1.0, 3.0, 4.0, 5.0, 6.0, 7.0])
+    values = 10.0 * np.exp(0.2 * time)
+    with pytest.raises(ValueError, match="strictly increasing"):
+        entry_point(time, values)
+
+
+@pytest.mark.parametrize("entry_point", _BOOTSTRAP_ENTRY_POINTS)
+def test_bootstrap_entry_points_reject_duplicated_time(entry_point):
+    # Strictly increasing forbids equal consecutive timestamps too.
+    time = np.array([0.0, 1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    values = 10.0 * np.exp(0.2 * time)
+    with pytest.raises(ValueError, match="strictly increasing"):
+        entry_point(time, values)
+
+
+@pytest.mark.parametrize("entry_point", _BOOTSTRAP_ENTRY_POINTS)
+def test_bootstrap_entry_points_reject_decreasing_values(entry_point):
+    # One dip in the middle -- decreasing in places. Verge analyzes growth,
+    # not decline, and the bootstrap entry points must surface that the
+    # same way the main analysis path does.
+    time = np.linspace(0.0, 7.0, 8)
+    values = np.array([10.0, 12.0, 11.0, 13.0, 14.0, 15.0, 16.0, 17.0])
+    with pytest.raises(ValueError, match="decreasing"):
+        entry_point(time, values)
+
+
+@pytest.mark.parametrize("entry_point", _BOOTSTRAP_ENTRY_POINTS)
+def test_bootstrap_entry_points_accept_a_valid_input(entry_point):
+    # Sanity check that the parametrized harness itself is not failing for
+    # the wrong reason: a clean nondecreasing series goes through cleanly.
+    time, values = _logistic_series(n=12)
+    entry_point(time, values)
