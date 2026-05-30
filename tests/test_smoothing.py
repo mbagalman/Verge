@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth
-from project_verge._fit import smooth_to_monotone
+from growthshape import analyze_growth
+from growthshape._fit import smooth_to_monotone
 
 
 def _logistic_series(k=120.0, r=0.7, t0=6.0, n=22, start=0.0, stop=12.0):
@@ -72,7 +72,7 @@ def test_analyze_growth_with_smoothing_accepts_noisy_logistic():
 
     result = analyze_growth(time, noisy, n_boot=0, allow_smoothing=True)
 
-    # Underlying signal is logistic; smoothing should let Verge see it.
+    # Underlying signal is logistic; smoothing should let GrowthShape see it.
     # We don't assert the verdict committed (small-sample / borderline cases
     # can still hit indeterminate gates) -- we assert the call succeeded.
     assert result is not None

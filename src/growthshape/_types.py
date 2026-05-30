@@ -186,7 +186,7 @@ class WeightIntervals:
 class AnalysisAssumptions:
     """Methodological choices baked into a single :func:`analyze_growth` call.
 
-    These are the dials Verge actually turned, recorded so a downstream
+    These are the dials GrowthShape actually turned, recorded so a downstream
     consumer can reproduce or audit the analysis without having to remember
     which arguments were passed. The prose explanation of *why* each default
     was chosen lives in the README and the function docstring; this

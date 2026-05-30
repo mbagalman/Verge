@@ -22,7 +22,7 @@ def smooth_to_monotone(
     """Rolling-median smoother followed by cumulative-max enforcement.
 
     The rolling median dampens small noisy excursions; the cumulative-max
-    pass guarantees the result satisfies Verge's nondecreasing input
+    pass guarantees the result satisfies GrowthShape's nondecreasing input
     contract. The combination is parameter-free aside from ``window``,
     robust to point outliers (median is breakdown 50%), and produces
     output of the same length as the input.
@@ -59,7 +59,7 @@ def prepare_inputs(
 
     ``min_relative_range`` rejects data with no meaningful growth signal:
     if ``(max(values) - min(values)) / max(values) < min_relative_range``,
-    the growth-vs-leveling-off question Verge exists to answer is
+    the growth-vs-leveling-off question GrowthShape exists to answer is
     ill-posed and the result would be a numerical artifact of which
     trivial-parameter fit wins on no information. Pass ``0`` to disable
     the check.
@@ -82,7 +82,7 @@ def prepare_inputs(
         raise ValueError("values must be strictly positive")
     if np.any(np.diff(value_array) < 0.0):
         raise ValueError(
-            "values are decreasing in places; Verge analyzes growth, not "
+            "values are decreasing in places; GrowthShape analyzes growth, not "
             "decline, so a decreasing series is outside its scope. Pass "
             "allow_smoothing=True to coerce noisy nondecreasing data."
         )
@@ -93,7 +93,7 @@ def prepare_inputs(
             raise ValueError(
                 f"no growth signal detected: values span only "
                 f"{(observed_range / max_value):.4%} of their maximum "
-                f"(threshold {min_relative_range:.2%}). Verge's "
+                f"(threshold {min_relative_range:.2%}). GrowthShape's "
                 f"growth-vs-leveling-off question is ill-posed on data "
                 f"this flat. Pass min_relative_range=0 to disable this check."
             )
@@ -205,7 +205,7 @@ def fit_power_law_model(
 
     A diagnostic-only candidate. The ``+1`` shift on time keeps ``log(t)``
     finite at ``t = 0`` after the package's standard time-origin
-    normalization. Verge does not use power-law for prediction or for the
+    normalization. GrowthShape does not use power-law for prediction or for the
     headline verdict; it competes on BIC only so that polynomial /
     power-law growth has somewhere honest to land instead of silently
     misclassifying as logistic.

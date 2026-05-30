@@ -6,8 +6,8 @@ matplotlib = pytest.importorskip("matplotlib")
 matplotlib.use("Agg")  # non-interactive backend for headless test runs
 import matplotlib.pyplot as plt  # noqa: E402
 
-from project_verge import analyze_growth  # noqa: E402
-from project_verge.plot import plot_growth_analysis  # noqa: E402
+from growthshape import analyze_growth  # noqa: E402
+from growthshape.plot import plot_growth_analysis  # noqa: E402
 
 
 def _logistic_series(k=120.0, r=0.7, t0=6.0, n=18, start=0.0, stop=12.0):

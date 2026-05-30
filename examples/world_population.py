@@ -1,4 +1,4 @@
-"""Verge applied to historical world population.
+"""GrowthShape applied to historical world population.
 
 Data: estimated world population at well-known milestone years from 1750 to
 2022. Values for 1950 onward are drawn from the UN World Population Prospects
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
-from project_verge import analyze_growth
+from growthshape import analyze_growth
 
 
 HERE = Path(__file__).parent
@@ -53,7 +53,7 @@ def main():
     )
     print()
 
-    # The point of running this on two windows is pedagogical: Verge's
+    # The point of running this on two windows is pedagogical: GrowthShape's
     # verdict is a function of *what data you give it*, not a universal
     # claim about the future. The full-history view is dominated by
     # 200+ years of acceleration and gives "accelerating"; the
@@ -94,11 +94,11 @@ def main():
     try:
         import matplotlib.pyplot as plt
 
-        from project_verge.plot import plot_growth_analysis
+        from growthshape.plot import plot_growth_analysis
     except ImportError:
         print()
         print("(matplotlib not installed; skipping plot. "
-              "Install with: pip install 'project-verge[plot]')")
+              "Install with: pip install 'growthshape[plot]')")
         return
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))

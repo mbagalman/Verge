@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth, fit_exponential, fit_linear, fit_logistic
+from growthshape import analyze_growth, fit_exponential, fit_linear, fit_logistic
 
 
 def _exp_series(a=2.5, r=0.18, n=14, start=0.0, stop=10.0):
@@ -164,7 +164,7 @@ def test_internal_fit_model_invariant_guard_distinguishes_from_user_input_error(
     # clearly distinct from the user-facing ValueError that prepare_inputs
     # raises ("at least N observations are required"). This pins the
     # invariant introduced when T-22 deduplicated the min_points check.
-    from project_verge._fit import fit_logistic_model, fit_power_law_model
+    from growthshape._fit import fit_logistic_model, fit_power_law_model
 
     time = np.linspace(0.0, 3.0, 4)
     values = 2.0 * np.exp(0.2 * time)

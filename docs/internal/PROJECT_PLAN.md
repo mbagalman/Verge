@@ -1,4 +1,4 @@
-# Project Verge Plan and Tracker
+# GrowthShape Plan and Tracker
 
 ## Project Goal
 
@@ -26,7 +26,7 @@ Build a public Python library that compares exponential and logistic growth for 
 
 ## Current Status / Next Actions
 
-- Core MVP implementation is in place in `src/project_verge/`.
+- Core MVP implementation is in place in `src/growthshape/`.
 - Tests cover the key statistical and validation paths.
 - Immediate next step: review package metadata one more time, add a release workflow, and decide whether to publish to PyPI after one external review.
 
@@ -68,7 +68,7 @@ Build a public Python library that compares exponential and logistic growth for 
   - Restored the logistic `K` lower bound to remain just above the observed maximum.
   - Documented `Diagnostics.fit_warnings` in the README and surfaced it in the Quick Start snippet.
   - Added negative tests to confirm custom `min_points` enforcement.
-  - Verified that the published Git remote matches `https://github.com/mbagalman/Verge`, so the current `pyproject.toml` URLs are correct.
+  - Verified that the published Git remote matches `https://github.com/mbagalman/growthshape`, so the current `pyproject.toml` URLs are correct.
 
 ## Decision Log
 

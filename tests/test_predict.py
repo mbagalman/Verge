@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from project_verge import Prediction, analyze_growth, bootstrap_predictions
+from growthshape import Prediction, analyze_growth, bootstrap_predictions
 
 
 def _exp_series(a=4.0, r=0.16, n=15, start=0.0, stop=10.0):

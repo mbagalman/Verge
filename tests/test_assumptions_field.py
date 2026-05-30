@@ -1,14 +1,14 @@
 """Tests for the structured AnalysisAssumptions field on GrowthAnalysis.
 
 T-23 replaced the static prose tuple with a dataclass that records the
-methodological choices Verge actually made for the call -- criterion,
+methodological choices GrowthShape actually made for the call -- criterion,
 evidence_strength, candidate models, observation model. These tests pin
 the membership and the per-call dynamism.
 """
 
 import numpy as np
 
-from project_verge import AnalysisAssumptions, analyze_growth
+from growthshape import AnalysisAssumptions, analyze_growth
 
 
 def _logistic_series(k=120.0, r=0.7, t0=6.0, n=22, start=0.0, stop=12.0):

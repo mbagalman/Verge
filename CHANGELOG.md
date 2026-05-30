@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Project Verge are documented in this file.
+All notable changes to GrowthShape are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the library is at the `0.x.y` series the public API is allowed to change between minor versions; once it stabilizes, breaking changes will require a major bump.
 
@@ -22,7 +22,7 @@ Initial release.
 
 - Four candidate models compete on the BIC/AICc score: exponential, linear, logistic, and power-law.
 - Power-law is diagnostic-only; when it wins the BIC competition the verdict is forced to `indeterminate (reason: power_law_shape)` because the user's "going up vs leveling off" question has no clean answer for power-law growth.
-- `criterion="aicc"` (default) or `"bic"` selects the information criterion. AICc is the default because the small-sample correction matters at the typical input sizes Verge sees (`n` between 8 and 30).
+- `criterion="aicc"` (default) or `"bic"` selects the information criterion. AICc is the default because the small-sample correction matters at the typical input sizes GrowthShape sees (`n` between 8 and 30).
 - Multi-start optimization on the logistic fit (`n_starts=8` by default), sweeping K and t0 across plausible initial guesses to avoid local minima.
 - `evidence_strength` parameter mapped to Kass & Raftery's (1995) interpretive bands: `"positive"` (≥ 0.75), `"strong"` (≥ 0.95, default), `"decisive"` (≥ 0.99). Below the band threshold, the verdict is forced to `indeterminate (reason: ambiguous_evidence)`.
 
@@ -31,7 +31,7 @@ Initial release.
 - `analyze_growth(time, values, ...)` returns a `GrowthAnalysis` dataclass with the verdict, four `ModelFit` objects, the bootstrap intervals (when run), the diagnostics, the assumption record, and the captured input arrays.
 - `GrowthAnalysis.predict(time, *, ci=0.9)` for vectorized future-value prediction; returns `Prediction(low, point, high)` namedtuples by default.
 - Public `fit_exponential`, `fit_linear`, `fit_logistic`, `fit_power_law` wrappers for callers who want a single-model fit without the comparison machinery.
-- All public types (`GrowthAnalysis`, `ModelFit`, `Diagnostics`, `BootstrapIntervals`, `WeightIntervals`, `ForecastDiagnostic`, `SignalAgreement`, `AnalysisAssumptions`, `Interval`, `Prediction`) plus `Literal` aliases (`ModelName`, `PreferredModel`, `IndeterminateReason`) exported from `project_verge` for type-narrowing in consumer code.
+- All public types (`GrowthAnalysis`, `ModelFit`, `Diagnostics`, `BootstrapIntervals`, `WeightIntervals`, `ForecastDiagnostic`, `SignalAgreement`, `AnalysisAssumptions`, `Interval`, `Prediction`) plus `Literal` aliases (`ModelName`, `PreferredModel`, `IndeterminateReason`) exported from `growthshape` for type-narrowing in consumer code.
 
 ### Uncertainty quantification
 
@@ -51,11 +51,11 @@ Initial release.
 
 - Strict input contract by default: positive, finite, strictly-increasing time, nondecreasing values, at least 8 observations.
 - Optional `allow_smoothing=True` runs a rolling-median + cumulative-max pre-fit smoother that admits noisy real-world data; the transformation is recorded in `result.transform_log`.
-- Up-front scope checks reject flat data (`min_relative_range`, default 1%) and decreasing data with clear error messages explaining why those inputs are outside Verge's scope.
+- Up-front scope checks reject flat data (`min_relative_range`, default 1%) and decreasing data with clear error messages explaining why those inputs are outside GrowthShape's scope.
 
 ### Visualization
 
-- Optional `plot_growth_analysis()` helper installable via the `[plot]` extra (`pip install 'project-verge[plot]'`). Single-figure summary with input data, all four fits, the K asymptote when logistic preferred, and a 90% prediction envelope when bootstrap data is available.
+- Optional `plot_growth_analysis()` helper installable via the `[plot]` extra (`pip install 'growthshape[plot]'`). Single-figure summary with input data, all four fits, the K asymptote when logistic preferred, and a 90% prediction envelope when bootstrap data is available.
 
 ### Documentation and examples
 

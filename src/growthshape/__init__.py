@@ -1,4 +1,4 @@
-"""Public package interface for Project Verge."""
+"""Public package interface for GrowthShape."""
 
 from ._api import (
     analyze_growth,

@@ -1,8 +1,8 @@
-"""Runnable demo for Project Verge."""
+"""Runnable demo for GrowthShape."""
 
 import numpy as np
 
-from project_verge import analyze_growth
+from growthshape import analyze_growth
 
 
 def run_case(name, time, values):

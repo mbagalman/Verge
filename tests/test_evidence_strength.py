@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth
-from project_verge._api import _evidence_strength_threshold
+from growthshape import analyze_growth
+from growthshape._api import _evidence_strength_threshold
 
 
 def _exp_series(a=4.0, r=0.16, n=15, start=0.0, stop=10.0):

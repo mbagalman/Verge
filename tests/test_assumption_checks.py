@@ -2,8 +2,8 @@ import math
 
 import numpy as np
 
-from project_verge import analyze_growth
-from project_verge._diagnostics import _ljung_box_pvalue
+from growthshape import analyze_growth
+from growthshape._diagnostics import _ljung_box_pvalue
 
 
 def _exp_series(a=4.0, r=0.16, n=15, start=0.0, stop=10.0):

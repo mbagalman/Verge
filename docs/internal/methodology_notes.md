@@ -1,8 +1,8 @@
 # Preserved design notebook
 
-> **Status: historical.** These are pre-package design notes that walked through the diagnostic intuitions behind Project Verge. They pre-date the implementation and have **not** been kept in sync with the shipped library.
+> **Status: historical.** These are pre-package design notes that walked through the diagnostic intuitions behind GrowthShape. They pre-date the implementation and have **not** been kept in sync with the shipped library.
 >
-> The snippets here use ad-hoc `scipy.optimize.curve_fit` and `statsmodels` calls, not the [`project_verge.analyze_growth()`](../../README.md#api) API; they describe a two-model exponential-vs-logistic frame, not the current four-way (exponential / linear / logistic / power-law) competition; they refer to BIC where the shipped default is AICc; and several time-sensitive observations are framed as "up to 2026."
+> The snippets here use ad-hoc `scipy.optimize.curve_fit` and `statsmodels` calls, not the [`growthshape.analyze_growth()`](../../README.md#api) API; they describe a two-model exponential-vs-logistic frame, not the current four-way (exponential / linear / logistic / power-law) competition; they refer to BIC where the shipped default is AICc; and several time-sensitive observations are framed as "up to 2026."
 >
 > For the current methodology, see:
 >
@@ -16,7 +16,7 @@
 
 ---
 
-# Project Verge
+# GrowthShape
 
 Distinguishing between exponential and logistic growth (an S-curve) during the early "rapid growth" phase is a classic problem in predictive modeling. In the early stages, both functions exhibit high positive first and second derivatives, making them nearly indistinguishable through standard curve-fitting alone.
 

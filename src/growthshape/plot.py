@@ -2,7 +2,7 @@
 
 This module is opt-in and requires matplotlib. Install with::
 
-    pip install 'project-verge[plot]'
+    pip install 'growthshape[plot]'
 """
 
 from __future__ import annotations
@@ -76,7 +76,7 @@ def plot_growth_analysis(
     ------
     ImportError
         If matplotlib is not installed. Install via
-        ``pip install 'project-verge[plot]'``.
+        ``pip install 'growthshape[plot]'``.
     """
 
     try:
@@ -84,10 +84,10 @@ def plot_growth_analysis(
     except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
         raise ImportError(
             "matplotlib is required for plot_growth_analysis. "
-            "Install with: pip install 'project-verge[plot]'"
+            "Install with: pip install 'growthshape[plot]'"
         ) from exc
 
-    # Local imports keep ``project_verge.plot`` importable without matplotlib
+    # Local imports keep ``growthshape.plot`` importable without matplotlib
     # and avoid a _types -> plot import cycle.
     from ._fit import exponential_curve, linear_curve, logistic_curve
 
@@ -191,10 +191,10 @@ def _logistic_y(curve):
 def _format_title(result: "GrowthAnalysis") -> str:
     label = _VERDICT_LABEL.get(result.preferred_model, result.preferred_model)
     if result.is_indeterminate:
-        return f"Verge: {label} (reason: {result.indeterminate_reason})"
+        return f"GrowthShape: {label} (reason: {result.indeterminate_reason})"
     confidence = {
         "exponential": result.p_exponential,
         "linear": result.p_linear,
         "logistic": result.p_logistic,
     }.get(result.preferred_model, 0.0)
-    return f"Verge: {label} ({result.preferred_model}, {confidence:.2f} confidence)"
+    return f"GrowthShape: {label} ({result.preferred_model}, {confidence:.2f} confidence)"

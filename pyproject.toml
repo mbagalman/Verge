@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "project-verge"
+name = "growthshape"
 dynamic = ["version"]
 description = "Estimate whether a positive growth series is better explained by exponential or logistic growth."
 readme = "README.md"
@@ -33,9 +33,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mbagalman/Verge"
-Repository = "https://github.com/mbagalman/Verge"
-Issues = "https://github.com/mbagalman/Verge/issues"
+Homepage = "https://github.com/mbagalman/growthshape"
+Repository = "https://github.com/mbagalman/growthshape"
+Issues = "https://github.com/mbagalman/growthshape/issues"
 
 [project.optional-dependencies]
 plot = [
@@ -51,13 +51,13 @@ dev = [
 package-dir = { "" = "src" }
 
 [tool.setuptools.dynamic]
-version = { attr = "project_verge.__version__" }
+version = { attr = "growthshape.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-project_verge = ["py.typed"]
+growthshape = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

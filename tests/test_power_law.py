@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth, fit_power_law
+from growthshape import analyze_growth, fit_power_law
 
 
 def _exp_series(a=4.0, r=0.16, n=15, start=0.0, stop=10.0):

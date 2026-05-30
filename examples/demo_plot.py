@@ -1,8 +1,8 @@
-"""Demo: plot a Verge growth analysis.
+"""Demo: plot a GrowthShape growth analysis.
 
 Requires the optional plotting extra:
 
-    pip install 'project-verge[plot]'
+    pip install 'growthshape[plot]'
 
 Run interactively to pop up a window:
 
@@ -17,8 +17,8 @@ import argparse
 
 import numpy as np
 
-from project_verge import analyze_growth
-from project_verge.plot import plot_growth_analysis
+from growthshape import analyze_growth
+from growthshape.plot import plot_growth_analysis
 
 
 def main():

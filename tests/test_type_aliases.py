@@ -10,7 +10,7 @@ from typing import get_args
 
 import numpy as np
 
-from project_verge import (
+from growthshape import (
     IndeterminateReason,
     ModelName,
     PreferredModel,

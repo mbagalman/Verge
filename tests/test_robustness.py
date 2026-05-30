@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth
+from growthshape import analyze_growth
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ def test_noisy_linear_classifies_linear_or_indeterminate(seed):
 
 def test_gompertz_data_does_not_crash():
     """Gompertz growth (y = K * exp(-b * exp(-c*t))) is not in v1's model
-    space. Verge must handle it without crashing and either commit to a
+    space. GrowthShape must handle it without crashing and either commit to a
     plausible candidate (logistic is closest geometrically) or emit
     indeterminate."""
     time = np.linspace(0.0, 12.0, 20)

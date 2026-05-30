@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from project_verge import (
+from growthshape import (
     BootstrapIntervals,
     WeightIntervals,
     analyze_growth,
@@ -311,7 +311,7 @@ def test_bootstrap_entry_points_reject_duplicated_time(entry_point):
 
 @pytest.mark.parametrize("entry_point", _BOOTSTRAP_ENTRY_POINTS)
 def test_bootstrap_entry_points_reject_decreasing_values(entry_point):
-    # One dip in the middle -- decreasing in places. Verge analyzes growth,
+    # One dip in the middle -- decreasing in places. GrowthShape analyzes growth,
     # not decline, and the bootstrap entry points must surface that the
     # same way the main analysis path does.
     time = np.linspace(0.0, 7.0, 8)

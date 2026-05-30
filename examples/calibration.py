@@ -1,4 +1,4 @@
-"""Generate calibration evidence for Verge's posterior model weights.
+"""Generate calibration evidence for GrowthShape's posterior model weights.
 
 Runs many seeded synthetic trials drawn from each of the in-family model
 classes (exponential, linear, logistic), records the BIC/AICc-derived
@@ -37,7 +37,7 @@ from pathlib import Path
 
 import numpy as np
 
-from project_verge import analyze_growth
+from growthshape import analyze_growth
 
 
 HERE = Path(__file__).parent
@@ -203,7 +203,7 @@ def plot(results, output_path, show=False):
     ax.set_xlim(0.4, 1.02)
     ax.set_ylim(-0.02, 1.05)
     ax.set_title(
-        f"Verge calibration ({sum(len(t) for t in results.values())} trials, "
+        f"GrowthShape calibration ({sum(len(t) for t in results.values())} trials, "
         f"seed={SEED})"
     )
     ax.legend(loc="lower right", framealpha=0.9, fontsize=9)

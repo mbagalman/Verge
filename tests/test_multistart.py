@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth, fit_logistic
+from growthshape import analyze_growth, fit_logistic
 
 
 def _logistic_series(k=120.0, r=0.7, t0=6.0, n=22, start=0.0, stop=12.0):

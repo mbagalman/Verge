@@ -1,6 +1,6 @@
-# Project Verge
+# GrowthShape
 
-Project Verge answers one focused question about a positive, growing time series:
+GrowthShape answers one focused question about a positive, growing time series:
 
 > **Is there evidence this is leveling off, or evidence it's still going up?**
 
@@ -11,7 +11,7 @@ It compares three candidate trajectories — pure exponential growth, linear gro
 - **leveling off** — an S-curve fits best, with bootstrap percentile intervals for the carrying capacity `K`, the inflection time `t0`, and any prediction horizons you ask for
 - **indeterminate** — the data does not contain enough evidence to choose, with a structured reason explaining why
 
-The "indeterminate" branch is intentional. A real-world series with only a handful of early data points often *cannot* be classified honestly, and Verge would rather say "I can't tell yet" than overclaim a confident verdict.
+The "indeterminate" branch is intentional. A real-world series with only a handful of early data points often *cannot* be classified honestly, and GrowthShape would rather say "I can't tell yet" than overclaim a confident verdict.
 
 ## What v1 answers
 
@@ -32,27 +32,27 @@ The "indeterminate" branch is intentional. A real-world series with only a handf
 
 ## What v1 does not answer
 
-- Whether a real-world process will *actually* saturate. Verge reports the evidence in the data under explicit modeling assumptions, not a guarantee about the future.
+- Whether a real-world process will *actually* saturate. GrowthShape reports the evidence in the data under explicit modeling assumptions, not a guarantee about the future.
 - Verdicts on noisy or non-monotone series. The v1 input contract is intentionally narrow; see *Input Contract* below.
 - A choice between richer S-curve families (Gompertz, Richards, etc.) or richer sub-exponential families (power-law, Gompertz-of-log, etc.). v1 only compares pure exponential, plain linear, and the standard logistic.
 - A CLI. v1 is library-only.
 
 ## Installation
 
-Project Verge is not yet published to PyPI; install from the source repository for now.
+GrowthShape is not yet published to PyPI; install from the source repository for now.
 
 To grab the current `main`:
 
 ```bash
-git clone https://github.com/mbagalman/Verge.git
-cd Verge
+git clone https://github.com/mbagalman/growthshape.git
+cd growthshape
 python3 -m pip install -e .
 ```
 
 To pin a specific release without cloning:
 
 ```bash
-pip install git+https://github.com/mbagalman/Verge.git@v0.1.0
+pip install git+https://github.com/mbagalman/growthshape.git@v0.1.0
 ```
 
 For local development (tests, lint, plotting helper):
@@ -64,15 +64,15 @@ python3 -m pip install -e '.[dev]'
 When the package is published to PyPI the standard install will become:
 
 ```bash
-pip install project-verge            # core
-pip install 'project-verge[plot]'    # with the optional matplotlib helper
+pip install growthshape            # core
+pip install 'growthshape[plot]'    # with the optional matplotlib helper
 ```
 
 ## Quick Start
 
 ```python
 import numpy as np
-from project_verge import analyze_growth
+from growthshape import analyze_growth
 
 # 1) Series with clear S-curve shape — leveling off detected.
 time = np.linspace(0.0, 12.0, 18)
@@ -142,14 +142,14 @@ For an indeterminate verdict `predict()` raises `ValueError` — the indetermina
 Install the optional plotting extra:
 
 ```bash
-pip install 'project-verge[plot]'
+pip install 'growthshape[plot]'
 ```
 
 Then `plot_growth_analysis(result)` produces a single-figure summary — data, all three fitted curves (the preferred model bold, the others as faint dashed lines for comparison), the carrying-capacity asymptote `K` when logistic is preferred, a 90% bootstrap prediction envelope when uncertainty data is available, and a title that mirrors the verdict line.
 
 ```python
 import matplotlib.pyplot as plt
-from project_verge.plot import plot_growth_analysis
+from growthshape.plot import plot_growth_analysis
 
 ax = plot_growth_analysis(result)
 plt.tight_layout()
@@ -160,7 +160,7 @@ Pass an existing `ax` to compose with other axes; pass `extrapolate_fraction=0` 
 
 ## Worked example: world population
 
-[examples/world_population.py](examples/world_population.py) runs Verge on world-population estimates at milestone years from 1750 through 2022 ([data file](examples/data/un_population.csv), drawn from the UN World Population Prospects 2022 revision plus standard pre-1950 historical estimates). The script is deliberately set up to compare two analysis windows on the *same* dataset, because Verge's verdict is a function of what data you give it — not a universal claim about the future:
+[examples/world_population.py](examples/world_population.py) runs GrowthShape on world-population estimates at milestone years from 1750 through 2022 ([data file](examples/data/un_population.csv), drawn from the UN World Population Prospects 2022 revision plus standard pre-1950 historical estimates). The script is deliberately set up to compare two analysis windows on the *same* dataset, because GrowthShape's verdict is a function of what data you give it — not a universal claim about the future:
 
 ```
 ============================================================
@@ -182,10 +182,10 @@ Per-capita slope: -0.002296; posterior weights: exponential 0.00 [0.00, 0.00], l
 
 Both windows are flagged as `indeterminate` under defaults, for two distinct reasons that are themselves the lesson:
 
-- Full history (n = 14): exponential leads with weight 0.88, which clears the `"positive"` band (0.75) but not the `"strong"` default (0.95). Verge declines to commit. The honest read is "exponential is the most likely candidate, but 0.88 is not a verdict, it is a lean." Pass `evidence_strength="positive"` and the verdict becomes `accelerating (exponential, 0.88 confidence)`; pass `"decisive"` and even AICc's preferred candidate would have to clear 0.99 (almost no real-data fit does).
+- Full history (n = 14): exponential leads with weight 0.88, which clears the `"positive"` band (0.75) but not the `"strong"` default (0.95). GrowthShape declines to commit. The honest read is "exponential is the most likely candidate, but 0.88 is not a verdict, it is a lean." Pass `evidence_strength="positive"` and the verdict becomes `accelerating (exponential, 0.88 confidence)`; pass `"decisive"` and even AICc's preferred candidate would have to clear 0.99 (almost no real-data fit does).
 - Post-1950 only (n = 9): the in-sample logistic fit is excellent (`K ≈ 13B`, inflection ≈ 2004), but with only 9 observations and a 4-parameter logistic the AICc small-sample penalty makes the bootstrap CI on the logistic weight wide ([0.14, 1.00]). T-28's `fragile_verdict` gate fires: "leveling off looks plausible but I cannot commit to it from 9 data points." Switching to `criterion="bic"` (gentler small-sample penalty) recovers the historical `leveling off (logistic, 1.00 confidence; 90% CI [0.67, 1.00])` verdict.
 
-Both indeterminate reasons are working as designed. Add another decade of observations to the modern window and the dataset will likely flip to a decisive `leveling off`. Move the threshold from `"strong"` to `"positive"` and the historical-window verdict becomes `accelerating`. The point of the example is that those *are* knobs the user can turn — Verge's defaults are conservative on purpose so that the headline only commits when the evidence is genuinely strong.
+Both indeterminate reasons are working as designed. Add another decade of observations to the modern window and the dataset will likely flip to a decisive `leveling off`. Move the threshold from `"strong"` to `"positive"` and the historical-window verdict becomes `accelerating`. The point of the example is that those *are* knobs the user can turn — GrowthShape's defaults are conservative on purpose so that the headline only commits when the evidence is genuinely strong.
 
 Run it yourself with `python examples/world_population.py` to see the side-by-side plot.
 
@@ -199,9 +199,9 @@ Runs the full analysis and returns a `GrowthAnalysis` object.
 
 `GrowthAnalysis.indeterminate_reason` is `None` when the verdict is decisive, and otherwise one of the six structured values listed in the [What v1 answers](#what-v1-answers) section above: `"neither_model_fits"`, `"power_law_shape"`, `"ambiguous_evidence"`, `"logistic_unidentifiable"`, `"signal_disagreement"`, or `"fragile_verdict"`.
 
-`criterion` selects the information criterion used for the four-way model comparison: `"aicc"` (default) or `"bic"`. AICc applies the standard small-sample correction `+ 2k(k+1)/(n−k−1)` on top of AIC; for the typical input sizes Verge sees (n = 8–30) the correction is meaningful and matches the small-sample-regression literature's recommendation. The two criteria pick the same model on clean data with a clear winner; on borderline cases AICc tends to penalize the higher-parameter logistic / power-law candidates more strongly than BIC at small n.
+`criterion` selects the information criterion used for the four-way model comparison: `"aicc"` (default) or `"bic"`. AICc applies the standard small-sample correction `+ 2k(k+1)/(n−k−1)` on top of AIC; for the typical input sizes GrowthShape sees (n = 8–30) the correction is meaningful and matches the small-sample-regression literature's recommendation. The two criteria pick the same model on clean data with a clear winner; on borderline cases AICc tends to penalize the higher-parameter logistic / power-law candidates more strongly than BIC at small n.
 
-`evidence_strength` controls how decisive the leading model has to be before Verge commits to a non-`indeterminate` verdict. The named bands are calibrated against Kass & Raftery's (1995) interpretive scale for log Bayes factors:
+`evidence_strength` controls how decisive the leading model has to be before GrowthShape commits to a non-`indeterminate` verdict. The named bands are calibrated against Kass & Raftery's (1995) interpretive scale for log Bayes factors:
 
 | `evidence_strength` | Winning weight | Approx. ΔIC gap | Kass & Raftery band |
 | --- | --- | --- | --- |
@@ -209,13 +209,13 @@ Runs the full analysis and returns a `GrowthAnalysis` object.
 | `"strong"` (default) | ≥ 0.95 | ≥ ~6 | "strong" |
 | `"decisive"` | ≥ 0.99 | ≥ ~10 | "decisive" |
 
-Below the threshold the verdict is forced to `indeterminate (reason: ambiguous_evidence)`. The default `"strong"` is intentionally conservative: a leading weight of 0.85 is *suggestive* of accelerating / leveling off / steady, but it is not a verdict you should bet on, and Verge says so. Pass `evidence_strength="positive"` if you want the looser threshold; pass `"decisive"` if you want only very-high-confidence verdicts.
+Below the threshold the verdict is forced to `indeterminate (reason: ambiguous_evidence)`. The default `"strong"` is intentionally conservative: a leading weight of 0.85 is *suggestive* of accelerating / leveling off / steady, but it is not a verdict you should bet on, and GrowthShape says so. Pass `evidence_strength="positive"` if you want the looser threshold; pass `"decisive"` if you want only very-high-confidence verdicts.
 
-`allow_smoothing` opens Verge to noisy real-world data. With the default `False`, the v1 input contract requires strict nondecreasing values and any downward blip raises `ValueError`. Setting `allow_smoothing=True` runs a rolling-median smoother (window `smoothing_window`, default 3) followed by a cumulative-max pass that enforces the nondecreasing post-condition the rest of the library assumes. The smoothed series — not the raw input — is what gets stored on `result.input_values`, what `predict()` and `plot()` see, and what the bootstrap resamples; this keeps the entire analysis in one consistent coordinate. The transformation is recorded in `result.transform_log` so the action is auditable. Trade-off: a *genuine* downward move in the underlying process is mapped to a flat segment by `cumulative-max`, biasing the fit upward — for series where you expect occasional real dips, do your own pre-processing instead.
+`allow_smoothing` opens GrowthShape to noisy real-world data. With the default `False`, the v1 input contract requires strict nondecreasing values and any downward blip raises `ValueError`. Setting `allow_smoothing=True` runs a rolling-median smoother (window `smoothing_window`, default 3) followed by a cumulative-max pass that enforces the nondecreasing post-condition the rest of the library assumes. The smoothed series — not the raw input — is what gets stored on `result.input_values`, what `predict()` and `plot()` see, and what the bootstrap resamples; this keeps the entire analysis in one consistent coordinate. The transformation is recorded in `result.transform_log` so the action is auditable. Trade-off: a *genuine* downward move in the underlying process is mapped to a flat segment by `cumulative-max`, biasing the fit upward — for series where you expect occasional real dips, do your own pre-processing instead.
 
 `n_starts` controls the multi-start optimization on the logistic fit only (other models have well-behaved likelihood surfaces and don't need it). The optimizer is run from `n_starts` diverse initial guesses sweeping across plausible K and `t0` values, and the lowest-RSS solution wins. Default 8. The bootstrap path inside `analyze_growth` always uses single-start because each resample is similar enough to the data that multi-start would just multiply the bootstrap cost without finding meaningfully better fits. Multi-start matters most for pathological cases where the inflection sits well outside the observed window with a high growth rate — single-start can land in a worse local minimum there. Pass `n_starts=1` to opt out for performance.
 
-`min_relative_range` is an up-front scope check: data is rejected with `ValueError` if `(max(values) - min(values)) / max(values)` falls below this threshold. The default `0.01` rejects series that span less than 1% of their maximum — there's no real growth signal in such data and Verge's growth-vs-leveling-off question is ill-posed on it. Pass `0` to disable the check; pass a larger value to require a more substantial growth signal before fitting.
+`min_relative_range` is an up-front scope check: data is rejected with `ValueError` if `(max(values) - min(values)) / max(values)` falls below this threshold. The default `0.01` rejects series that span less than 1% of their maximum — there's no real growth signal in such data and GrowthShape's growth-vs-leveling-off question is ill-posed on it. Pass `0` to disable the check; pass a larger value to require a more substantial growth signal before fitting.
 
 `horizons`, `n_boot`, `bootstrap_confidence`, and `bootstrap_seed` control a pair-bootstrap that fills `GrowthAnalysis.logistic_intervals` with percentile intervals for the logistic `K`, `r`, and `t0`, plus one prediction interval per supplied horizon (in the original time coordinate). The bootstrap runs only when it is actually informative — when the logistic is the preferred model or the verdict is indeterminate — because the optimizer is unidentified on data that is clearly exponential and a bootstrap there would just be expensive decoration. Pass `n_boot=0` to skip the bootstrap entirely.
 
@@ -249,32 +249,32 @@ Version 1 assumes:
 
 ## How calibrated are these probabilities?
 
-The headline number after a verdict — `(logistic, 0.95 confidence)` and similar — is the BIC/AICc-derived posterior weight on the winning model. For that number to mean what it says, the empirical accuracy at any given confidence level should approximately match: at 0.90 predicted confidence, Verge should be right about 90% of the time.
+The headline number after a verdict — `(logistic, 0.95 confidence)` and similar — is the BIC/AICc-derived posterior weight on the winning model. For that number to mean what it says, the empirical accuracy at any given confidence level should approximately match: at 0.90 predicted confidence, GrowthShape should be right about 90% of the time.
 
 [examples/calibration.py](examples/calibration.py) generates calibration evidence by running 900 seeded synthetic trials (300 each from logistic / exponential / linear, with random parameters and multiplicative log-normal noise at sigma in [0, 0.10], routed through `allow_smoothing=True`), recording the predicted model and its weight, and binning by confidence to compute empirical accuracy. The result, saved to [docs/calibration.png](docs/calibration.png):
 
-![Verge calibration plot](docs/calibration.png)
+![GrowthShape calibration plot](docs/calibration.png)
 
 Reading the plot:
 
-- **Aggregated (solid blue):** roughly tracks the `y = x` diagonal in the well-populated mid-confidence range (0.7–0.9). At very high confidence (0.95+, the rightmost bin with 425 trials) the empirical accuracy is ~89%, slightly below the predicted 95%+ — there is a real ~6 point under-calibration when Verge commits decisively. The low-confidence bins on the left have small populations (n in single digits to ~30) and noisy estimates.
-- **Logistic (red):** every trial lands in the 0.95+ bin and is correctly classified — Verge is essentially never wrong about a true logistic shape, even noisy.
+- **Aggregated (solid blue):** roughly tracks the `y = x` diagonal in the well-populated mid-confidence range (0.7–0.9). At very high confidence (0.95+, the rightmost bin with 425 trials) the empirical accuracy is ~89%, slightly below the predicted 95%+ — there is a real ~6 point under-calibration when GrowthShape commits decisively. The low-confidence bins on the left have small populations (n in single digits to ~30) and noisy estimates.
+- **Logistic (red):** every trial lands in the 0.95+ bin and is correctly classified — GrowthShape is essentially never wrong about a true logistic shape, even noisy.
 - **Exponential (orange dashed):** tracks the diagonal in the populated bins, with the bulk of mass in the 0.85–0.97 range. 92% accuracy overall.
 - **Linear (green dashed):** consistently below the diagonal. Linear data with multiplicative noise + cumulative-max smoothing (T-15) gets misclassified ~48% of the time as logistic or power-law shape. This is the smoothing trade-off the *Failure modes* section calls out: cumulative-max maps real downward dips to flat segments, which look saturating to the logistic / power-law fits. The miscalibration is real and documented; if your domain has noisy linear-like data, prefer your own pre-processing over `allow_smoothing=True`.
 
-The right way to read the plot is "Verge's high-confidence verdicts are mostly right, with a few-percent under-calibration at the top, and a real failure mode for noise-dominated linear inputs". Pair the probability with the structured indeterminate reasons (`signal_disagreement`, `fragile_verdict`, `power_law_shape`, `neither_model_fits`) for a full picture; the probability alone, even at 0.95+, is not the whole story.
+The right way to read the plot is "GrowthShape's high-confidence verdicts are mostly right, with a few-percent under-calibration at the top, and a real failure mode for noise-dominated linear inputs". Pair the probability with the structured indeterminate reasons (`signal_disagreement`, `fragile_verdict`, `power_law_shape`, `neither_model_fits`) for a full picture; the probability alone, even at 0.95+, is not the whole story.
 
 To re-run on your own machine: `python examples/calibration.py` (requires the `[plot]` extra). The script prints a per-class accuracy table to stdout and writes the figure to `docs/calibration.png` by default.
 
 ## Failure modes
 
-Verge's input contract is intentionally narrow and its candidate model space is small. When inputs sit outside what v1 supports, the failure shows up in one of three ways: a `ValueError` from input validation, an `indeterminate` verdict with a structured `indeterminate_reason`, or — in a few cases worth being honest about — a confident-looking verdict on data the library cannot actually distinguish. This section catalogs the patterns most worth watching for.
+GrowthShape's input contract is intentionally narrow and its candidate model space is small. When inputs sit outside what v1 supports, the failure shows up in one of three ways: a `ValueError` from input validation, an `indeterminate` verdict with a structured `indeterminate_reason`, or — in a few cases worth being honest about — a confident-looking verdict on data the library cannot actually distinguish. This section catalogs the patterns most worth watching for.
 
 ### Polynomial or power-law growth
 
 **Signature.** Series shaped like `y ∝ t^k` for some `k > 0` — cubic, square-root, anything that is not pure exponential, linear, or sigmoid.
 
-**Library response.** Verge fits a power-law candidate (`y = a · (t + 1)^k`) alongside the three primary models. When the criterion picks power-law as the leading shape, the verdict is forced to `indeterminate (reason: power_law_shape)`, since v1's verdict surface (still growing / steady / leveling off) has no clean answer for power-law growth. A cubic series like `y = t**3` returns `indeterminate (reason: power_law_shape)` at the default `min_fit_quality`.
+**Library response.** GrowthShape fits a power-law candidate (`y = a · (t + 1)^k`) alongside the three primary models. When the criterion picks power-law as the leading shape, the verdict is forced to `indeterminate (reason: power_law_shape)`, since v1's verdict surface (still growing / steady / leveling off) has no clean answer for power-law growth. A cubic series like `y = t**3` returns `indeterminate (reason: power_law_shape)` at the default `min_fit_quality`.
 
 **Mitigation.** None needed: at the default threshold the library now flags power-law growth honestly rather than misclassifying it as logistic. If you want the underlying power-law fit, it lives at `result.power_law_fit` and the weight at `result.p_power_law`.
 
@@ -298,7 +298,7 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 
 **Signature.** Real-world noisy data where some adjacent observations have `y_{i+1} < y_i`.
 
-**Library response.** By default, hard `ValueError` whose message frames the rejection as a scope issue ("Verge analyzes growth, not decline; a decreasing series is outside its scope") and points at the smoothing escape hatch. Pass `allow_smoothing=True` and Verge runs a rolling-median plus cumulative-max smoother to coerce the input to monotone before fitting.
+**Library response.** By default, hard `ValueError` whose message frames the rejection as a scope issue ("GrowthShape analyzes growth, not decline; a decreasing series is outside its scope") and points at the smoothing escape hatch. Pass `allow_smoothing=True` and GrowthShape runs a rolling-median plus cumulative-max smoother to coerce the input to monotone before fitting.
 
 **Mitigation.** Use `analyze_growth(time, values, allow_smoothing=True)`. The transformation is recorded in `result.transform_log` so the action is auditable. The smoother is parameter-free aside from `smoothing_window` (default 3, must be a positive odd integer); for very noisy data try `smoothing_window=5`. The trade-off is that genuine real-world *decreases* in the underlying process are flattened by `cumulative-max` — if your data has real dips you want preserved, do your own pre-processing.
 
@@ -306,9 +306,9 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 
 **Signature.** Data where `(max(values) - min(values)) / max(values)` is below 1% — the values barely move across the observed window.
 
-**Library response.** Hard `ValueError("no growth signal detected: values span only X% of their maximum (threshold 1.00%)...")` from input validation. The growth-vs-leveling-off question Verge exists to answer is ill-posed when there is no growth to analyze; rejecting up front is more honest than fitting trivial-parameter models to no signal and reporting whichever wins on numerical artifact.
+**Library response.** Hard `ValueError("no growth signal detected: values span only X% of their maximum (threshold 1.00%)...")` from input validation. The growth-vs-leveling-off question GrowthShape exists to answer is ill-posed when there is no growth to analyze; rejecting up front is more honest than fitting trivial-parameter models to no signal and reporting whichever wins on numerical artifact.
 
-**Mitigation.** If your data really is flat, Verge has nothing useful to say — that's the answer. If you have a slowly-growing series that happens to fall just below the 1% threshold, lower the bar with `min_relative_range=0.001` or disable the check entirely with `min_relative_range=0`.
+**Mitigation.** If your data really is flat, GrowthShape has nothing useful to say — that's the answer. If you have a slowly-growing series that happens to fall just below the 1% threshold, lower the bar with `min_relative_range=0.001` or disable the check entirely with `min_relative_range=0`.
 
 ### Non-positive values
 
@@ -327,7 +327,7 @@ Verge's input contract is intentionally narrow and its candidate model space is 
 - **Power-law shape detection.** Cumulative-noise series have shape statistics that are well-approximated by a power-law fit, so most random-walk-like seeds now classify as `indeterminate (reason: power_law_shape)` — no false confidence on the headline.
 - **Fragile-verdict gate.** When a verdict survives the other indeterminate checks but its bootstrap weight CI is wider than `max_weight_ci_width` (default 0.40), the verdict is downgraded to `indeterminate (reason: fragile_verdict)`. This catches cases where the criterion picks a model decisively but resampling shows the choice is unstable.
 
-**Mitigation.** None needed for typical inputs at default thresholds; the two gates handle this automatically. Tune `max_weight_ci_width` lower (toward 0.0) for stricter rejection of fragile verdicts, or higher (toward 1.0) to disable the gate. Cross-checking with domain knowledge is still wise — Verge can only see the data it is given.
+**Mitigation.** None needed for typical inputs at default thresholds; the two gates handle this automatically. Tune `max_weight_ci_width` lower (toward 0.0) for stricter rejection of fragile verdicts, or higher (toward 1.0) to disable the gate. Cross-checking with domain knowledge is still wise — GrowthShape can only see the data it is given.
 
 ### Already-saturated series
 
@@ -357,7 +357,7 @@ Plain-English definitions for the statistics terms used here — *posterior weig
 
 ## Repository Layout
 
-- `src/project_verge/`: library source
+- `src/growthshape/`: library source
 - `tests/`: unit tests
 - `examples/demo_growth_analysis.py`: runnable demonstration on synthetic series
 - `examples/demo_plot.py`: matplotlib visualization demo

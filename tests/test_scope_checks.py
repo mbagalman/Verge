@@ -5,7 +5,7 @@ going up, or do I have a reason to think this will level off?" Two input
 shapes are out of scope and are rejected before any fitting:
 
   - flat data (no growth signal): the question is ill-posed
-  - decreasing data: Verge analyzes growth, not decline
+  - decreasing data: GrowthShape analyzes growth, not decline
 
 The flat-data threshold is configurable via ``min_relative_range`` on
 ``analyze_growth`` and the four ``fit_*`` wrappers. Default 0.01 (1% of
@@ -15,7 +15,7 @@ max value); pass 0 to disable.
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth, fit_logistic
+from growthshape import analyze_growth, fit_logistic
 
 
 def _logistic_series(k=120.0, r=0.7, t0=6.0, n=22, start=0.0, stop=12.0):
@@ -116,7 +116,7 @@ def test_decreasing_data_error_explains_scope_not_just_contract():
     msg = str(excinfo.value)
 
     # Must communicate scope, not just "contract violation".
-    assert "Verge analyzes growth" in msg
+    assert "GrowthShape analyzes growth" in msg
     assert "outside its scope" in msg
     # Should also point users at the smoothing escape hatch.
     assert "allow_smoothing" in msg

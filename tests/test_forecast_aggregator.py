@@ -2,13 +2,13 @@ import math
 
 import numpy as np
 
-from project_verge import ForecastDiagnostic, analyze_growth
-from project_verge._diagnostics import (
+from growthshape import ForecastDiagnostic, analyze_growth
+from growthshape._diagnostics import (
     _forward_chaining_diagnostic,
     _logistic_has_best_forecast,
 )
-from project_verge._fit import fit_exponential_model
-from project_verge._types import ModelFit
+from growthshape._fit import fit_exponential_model
+from growthshape._types import ModelFit
 
 
 def _exp_series(a=4.0, r=0.16, n=15, start=0.0, stop=10.0):

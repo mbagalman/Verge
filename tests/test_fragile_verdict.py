@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from project_verge import Interval, WeightIntervals, analyze_growth
-from project_verge._api import _verdict_is_fragile
+from growthshape import Interval, WeightIntervals, analyze_growth
+from growthshape._api import _verdict_is_fragile
 
 
 def _logistic_series(k=120.0, r=0.7, t0=6.0, n=22, start=0.0, stop=12.0):
@@ -112,7 +112,7 @@ def test_summary_note_text_includes_resampling_swap_phrase():
     # confidence is unreliable. We test this via the formatter's note table
     # because the end-to-end fire path is not reachable on v1 inputs (see
     # comment above).
-    from project_verge._summary import _INDETERMINATE_NOTE
+    from growthshape._summary import _INDETERMINATE_NOTE
 
     note = _INDETERMINATE_NOTE["fragile_verdict"]
     assert "could swap under resampling" in note

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from project_verge import analyze_growth, fit_exponential, fit_logistic
+from growthshape import analyze_growth, fit_exponential, fit_logistic
 
 
 def _exp_series(a=4.0, r=0.16, n=15, start=0.0, stop=10.0):
@@ -97,7 +97,7 @@ def test_aicc_falls_back_to_inf_when_n_minus_k_minus_1_is_nonpositive():
     # Reachable inside the bootstrap path with n=4 and a 4-parameter logistic
     # (3 curve params + noise scale): n - k - 1 = -1 < 0, so the AICc
     # correction is undefined and we mark the score as +inf.
-    from project_verge._fit import _aicc
+    from growthshape._fit import _aicc
 
     aicc_undefined = _aicc(log_likelihood=-5.0, parameter_count=4, n=4)
     assert aicc_undefined == float("inf")
