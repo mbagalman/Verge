@@ -22,7 +22,7 @@ Build a public Python library that compares exponential and logistic growth for 
 - [x] Add tests for model recovery, classification, ambiguity, and validation
 - [x] Add README, example script, license, and CI workflow
 - [x] Publish repository to GitHub
-- [ ] Add package release workflow and first tagged release
+- [x] Add package release workflow and first tagged release
 
 ## Current Status / Next Actions
 

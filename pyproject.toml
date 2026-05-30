@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "project-verge"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Estimate whether a positive growth series is better explained by exponential or logistic growth."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -23,7 +23,9 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Information Analysis",
+  "Typing :: Typed",
 ]
 dependencies = [
   "numpy>=1.23",
@@ -48,8 +50,14 @@ dev = [
 [tool.setuptools]
 package-dir = { "" = "src" }
 
+[tool.setuptools.dynamic]
+version = { attr = "project_verge.__version__" }
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+project_verge = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

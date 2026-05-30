@@ -47,7 +47,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | **done** (`ab5695a`) |
 | T-24 | Glossary in docs | P3 | D | S | — | **done** (`ffd7716`) |
 | T-25 | `CHANGELOG.md` | P3 | D | S | — | **done** (`7f4bc98`) |
-| T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — | open |
+| T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — | **done** |
 
 ---
 
@@ -496,11 +496,13 @@ Standard Keep-a-Changelog format. Pre-populate with the v0.1.0 entry once that s
 ---
 
 ### T-26: Defer release workflow until P0/P1 land
-**Category:** Process · **Effort:** S
+**Category:** Process · **Effort:** S · **Status:** Done
 
 [PROJECT_PLAN.md](PROJECT_PLAN.md) currently lists "release workflow + first tagged release" as the next milestone. Several P0/P1 tickets here change the public API (new fields, new return values, possibly a 3-way verdict). Either tag pre-releases (`v0.1.0a1`, etc.) or hold the tag until at least T-01 through T-04 are merged.
 
-**Files.** [PROJECT_PLAN.md](PROJECT_PLAN.md)
+**Resolution.** All P0/P1/P2 tickets landed, so the hold is lifted. Added `.github/workflows/release.yml` (tag-triggered build + `twine check` + PyPI Trusted Publishing via OIDC, gated on a `pypi` environment). Hardened `ci.yml` to a 3-OS × Python 3.9–3.13 matrix plus a `package` job that builds and `twine check`s the distributions on every push. Added a `py.typed` marker (the package ships full type information) wired through `[tool.setuptools.package-data]`, and single-sourced the version from `project_verge.__version__` via `[tool.setuptools.dynamic]`. The `v0.1.0` tag was re-cut onto the commit carrying these changes so the released artifact matches the reviewed tree.
+
+**Files.** new [release.yml](../../.github/workflows/release.yml), [ci.yml](../../.github/workflows/ci.yml), [pyproject.toml](../../pyproject.toml), new `src/project_verge/py.typed`, [PROJECT_PLAN.md](PROJECT_PLAN.md)
 
 ---
 
