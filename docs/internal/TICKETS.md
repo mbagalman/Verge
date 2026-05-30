@@ -47,7 +47,7 @@ Tickets are grouped by priority. Within a tier, ordering is rough but generally 
 | T-23 | Make `assumptions` field structured (or remove) | P3 | C | S | T-15 | **done** (`ab5695a`) |
 | T-24 | Glossary in docs | P3 | D | S | — | **done** (`ffd7716`) |
 | T-25 | `CHANGELOG.md` | P3 | D | S | — | **done** (`7f4bc98`) |
-| T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — | **done** |
+| T-26 | Defer release workflow until P0/P1 land | P3 | Process | S | — | **done** (`3cb31c9`) |
 
 ---
 
@@ -496,7 +496,7 @@ Standard Keep-a-Changelog format. Pre-populate with the v0.1.0 entry once that s
 ---
 
 ### T-26: Defer release workflow until P0/P1 land
-**Category:** Process · **Effort:** S · **Status:** Done
+**Category:** Process · **Effort:** S · **Status:** Done in commit `3cb31c9`
 
 [PROJECT_PLAN.md](PROJECT_PLAN.md) currently lists "release workflow + first tagged release" as the next milestone. Several P0/P1 tickets here change the public API (new fields, new return values, possibly a 3-way verdict). Either tag pre-releases (`v0.1.0a1`, etc.) or hold the tag until at least T-01 through T-04 are merged.
 
