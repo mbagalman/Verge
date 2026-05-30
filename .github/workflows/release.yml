@@ -1,6 +1,10 @@
 name: Release
 
-# Build and publish to PyPI when a version tag is pushed.
+# Build and publish to PyPI when a GitHub Release is published.
+#
+# Triggering on a published Release (rather than a raw tag push) keeps
+# moving or re-cutting tags from firing a deploy — you publish deliberately
+# by creating a Release in the GitHub UI or with `gh release create`.
 #
 # Publishing uses PyPI Trusted Publishing (OIDC) — there is no API token to
 # store. Before the first release, register this repository + the `publish`
@@ -9,9 +13,8 @@ name: Release
 # named `pypi` on this repo.
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
 
 jobs:
   build:

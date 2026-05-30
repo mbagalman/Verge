@@ -336,12 +336,20 @@ class GrowthAnalysis:
             confidence=ci,
             seed=seed,
         )
-        predictions = [
-            Prediction(
-                low=interval.low,
-                point=float(point_array[i]),
-                high=interval.high,
+        predictions = []
+        for i, interval in enumerate(intervals):
+            point = float(point_array[i])
+            # The analytical point estimate and the bootstrap percentile
+            # bounds come from separate computations, so the point can land
+            # marginally outside the resampled interval (typically only by
+            # floating-point noise when it sits on an edge). Widen the
+            # reported bounds to always bracket the point so the interval is
+            # guaranteed to contain its own best estimate.
+            predictions.append(
+                Prediction(
+                    low=min(interval.low, point),
+                    point=point,
+                    high=max(interval.high, point),
+                )
             )
-            for i, interval in enumerate(intervals)
-        ]
         return predictions[0] if is_scalar else predictions
