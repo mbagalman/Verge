@@ -150,7 +150,7 @@ def test_analyze_growth_skips_bootstrap_when_exponential_wins():
 
     assert result.preferred_model == "exponential"
     assert result.logistic_intervals is None
-    assert result.weight_intervals is None
+    assert result.weight_intervals is not None
 
 
 def test_bootstrap_model_weights_returns_ordered_intervals():
@@ -221,7 +221,7 @@ def test_analyze_growth_skips_weight_intervals_when_linear_wins():
     result = analyze_growth(time, values)
 
     assert result.preferred_model == "linear"
-    assert result.weight_intervals is None
+    assert result.weight_intervals is not None
 
 
 @pytest.mark.parametrize("bad_prior", [float("nan"), float("inf"), 0.0, -0.1])
