@@ -55,10 +55,10 @@ def main():
 
     # The point of running this on two windows is pedagogical: GrowthShape's
     # verdict is a function of *what data you give it*, not a universal
-    # claim about the future. The full-history view is dominated by
-    # 200+ years of acceleration and gives "accelerating"; the
-    # post-1950 view sees the demographic transition and gives
-    # "leveling off" with a carrying-capacity estimate.
+    # claim about the future. Under the conservative defaults, the
+    # full-history view is an exponential-leaning but ambiguous result;
+    # the post-1950 view sees the demographic transition but flags the
+    # short-window logistic verdict as fragile.
     print("=" * 60)
     print("Full history (1750-2022)")
     print("=" * 60)

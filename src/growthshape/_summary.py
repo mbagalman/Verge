@@ -29,8 +29,9 @@ _INDETERMINATE_NOTE = {
         "The logistic carrying capacity is not identified by the observed window."
     ),
     "signal_disagreement": (
-        "BIC prefers logistic, but the supporting diagnostics (per-capita slope, "
-        "log-residual curvature, forecast MAE) do not all point to leveling off."
+        "The chosen criterion prefers logistic, but the supporting diagnostics "
+        "(per-capita slope, log-residual curvature, forecast MAE) do not all "
+        "point to leveling off."
     ),
     "power_law_shape": (
         "The data is best described by a power-law shape (y ~ a * t**k); v1 has "

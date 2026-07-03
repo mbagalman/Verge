@@ -15,7 +15,13 @@ max value); pass 0 to disable.
 import numpy as np
 import pytest
 
-from growthshape import analyze_growth, fit_logistic
+from growthshape import (
+    analyze_growth,
+    fit_exponential,
+    fit_linear,
+    fit_logistic,
+    fit_power_law,
+)
 
 
 def _logistic_series(k=120.0, r=0.7, t0=6.0, n=22, start=0.0, stop=12.0):
@@ -147,6 +153,18 @@ def test_invalid_min_relative_range_raises(bad_value):
     time, values = _logistic_series(n=22)
     with pytest.raises(ValueError, match="min_relative_range"):
         analyze_growth(time, values, n_boot=0, min_relative_range=bad_value)
+
+
+@pytest.mark.parametrize(
+    "fit_func", [fit_exponential, fit_linear, fit_logistic, fit_power_law]
+)
+@pytest.mark.parametrize(
+    "bad_value", [float("nan"), float("inf"), -0.1, 1.0, 1.5]
+)
+def test_public_fit_wrappers_reject_invalid_min_relative_range(fit_func, bad_value):
+    time, values = _logistic_series(n=22)
+    with pytest.raises(ValueError, match="min_relative_range"):
+        fit_func(time, values, min_relative_range=bad_value)
 
 
 def test_min_relative_range_zero_is_explicitly_allowed():

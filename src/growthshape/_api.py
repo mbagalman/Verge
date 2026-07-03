@@ -28,6 +28,7 @@ from ._uncertainty import bootstrap_logistic_intervals, bootstrap_model_weights
 def fit_exponential(
     time, values, *, min_points: int = 8, min_relative_range: float = 0.01
 ) -> ModelFit:
+    _validate_min_relative_range(min_relative_range)
     normalized_time, normalized_values = prepare_inputs(
         time, values, min_points=min_points, min_relative_range=min_relative_range
     )
@@ -37,6 +38,7 @@ def fit_exponential(
 def fit_linear(
     time, values, *, min_points: int = 8, min_relative_range: float = 0.01
 ) -> ModelFit:
+    _validate_min_relative_range(min_relative_range)
     normalized_time, normalized_values = prepare_inputs(
         time, values, min_points=min_points, min_relative_range=min_relative_range
     )
@@ -51,6 +53,8 @@ def fit_logistic(
     n_starts: int = 1,
     min_relative_range: float = 0.01,
 ) -> ModelFit:
+    _validate_n_starts(n_starts)
+    _validate_min_relative_range(min_relative_range)
     normalized_time, normalized_values = prepare_inputs(
         time, values, min_points=min_points, min_relative_range=min_relative_range
     )
@@ -62,6 +66,7 @@ def fit_logistic(
 def fit_power_law(
     time, values, *, min_points: int = 8, min_relative_range: float = 0.01
 ) -> ModelFit:
+    _validate_min_relative_range(min_relative_range)
     normalized_time, normalized_values = prepare_inputs(
         time, values, min_points=min_points, min_relative_range=min_relative_range
     )
@@ -94,8 +99,10 @@ def analyze_growth(
     _validate_fit_quality(min_fit_quality)
     _validate_max_weight_ci_width(max_weight_ci_width)
     _validate_criterion(criterion)
+    _validate_analysis_min_points(min_points, criterion)
     _validate_n_starts(n_starts)
     _validate_min_relative_range(min_relative_range)
+    _validate_bootstrap_options(n_boot, bootstrap_confidence)
     winning_weight_threshold = _evidence_strength_threshold(evidence_strength)
 
     # Optional pre-fit smoothing for noisy real-world data. The smoother runs
@@ -198,12 +205,12 @@ def analyze_growth(
         observation_model="log_normal",
     )
 
-    # Bootstrap is only informative when the logistic verdict is part of the
-    # answer the user cares about. When exponential wins decisively, the
-    # logistic optimizer thrashes on every resample (K is unidentified) and
-    # the resulting CI is meaningless decoration that costs many seconds.
-    bootstrap_relevant = preferred_model == "logistic" or is_indeterminate
-    if logistic_fit.converged and n_boot > 0 and bootstrap_relevant:
+    # Bootstrap for the logistic parameters is only informative when the logistic
+    # model leads and fits reasonably well. When exponential or another model leads,
+    # the logistic optimizer thrashes on every resample (K is unidentified) and
+    # the resulting CI is meaningless decoration that costs extra time.
+    bootstrap_logistic = leading_model == "logistic" and not all_fits_poor
+    if logistic_fit.converged and n_boot > 0 and bootstrap_logistic:
         # Bootstrap uses the smoothed values when smoothing was applied, so
         # the resampled fits live in the same coordinate system as the main
         # analysis. Otherwise the weight CIs would be computed on noisy raw
@@ -217,6 +224,14 @@ def analyze_growth(
             confidence=bootstrap_confidence,
             seed=bootstrap_seed,
         )
+    else:
+        logistic_intervals = None
+
+    # We need the weight bootstrap to check for fragile decisive verdicts.
+    # We also run it when logistic is leading so the summary can report
+    # the exact weight CI when logistic intervals are already being printed.
+    bootstrap_weights = (not is_indeterminate) or bootstrap_logistic
+    if n_boot > 0 and bootstrap_weights:
         weight_intervals = bootstrap_model_weights(
             time,
             values_for_fitting,
@@ -230,7 +245,6 @@ def analyze_growth(
             seed=bootstrap_seed,
         )
     else:
-        logistic_intervals = None
         weight_intervals = None
 
     # Fragile-verdict gate (T-28). Last in the indeterminate precedence chain
@@ -338,13 +352,13 @@ def _signals_disagree_with_logistic_verdict(
     leading_model: str,
     agreement: SignalAgreement,
 ) -> bool:
-    """Second-opinion check applied only to a BIC-derived logistic verdict.
+    """Second-opinion check applied only to a criterion-derived logistic verdict.
 
     Per-capita-slope and log-residual-curvature can be significantly negative
     for clean linear data too (because ``log(a + b*t)`` is concave and
     ``b/y`` decreases with ``y``), so applying the same gate symmetrically
     against non-logistic verdicts would over-fire on linear cases. The
-    asymmetry is deliberate: BIC's three-way comparison already weighs
+    asymmetry is deliberate: the criterion's model comparison already weighs
     exponential vs linear vs logistic against each other, so the supporting
     signals only need to second-guess the logistic branch.
     """
@@ -397,6 +411,26 @@ def _validate_min_relative_range(min_relative_range: float) -> None:
         raise ValueError(
             "min_relative_range must be in the half-open interval [0, 1)"
         )
+
+
+def _validate_bootstrap_options(n_boot: int, confidence: float) -> None:
+    if not isinstance(n_boot, (int, np.integer)) or isinstance(n_boot, bool):
+        raise ValueError("n_boot must be an integer")
+    if n_boot < 0:
+        raise ValueError("n_boot must be non-negative")
+    if not math.isfinite(confidence):
+        raise ValueError("confidence must be finite")
+    if not (0.0 < confidence < 1.0):
+        raise ValueError("confidence must be in the open interval (0, 1)")
+
+
+def _validate_analysis_min_points(min_points: int, criterion: str) -> None:
+    if not isinstance(min_points, (int, np.integer)) or isinstance(min_points, bool):
+        raise ValueError("min_points must be an integer")
+    if min_points < 4:
+        raise ValueError("min_points must be at least 4 to permit diagnostic checks and bootstrapping")
+    if criterion == "aicc" and min_points < 5:
+        raise ValueError("min_points must be at least 5 when criterion='aicc' to permit finite information criteria")
 
 
 # Winning-weight thresholds for the four-way model competition, mapped from

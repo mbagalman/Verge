@@ -21,7 +21,7 @@ Initial release.
 ### Modeling
 
 - Four candidate models compete on the BIC/AICc score: exponential, linear, logistic, and power-law.
-- Power-law is diagnostic-only; when it wins the BIC competition the verdict is forced to `indeterminate (reason: power_law_shape)` because the user's "going up vs leveling off" question has no clean answer for power-law growth.
+- Power-law is diagnostic-only; when it wins the chosen information-criterion competition the verdict is forced to `indeterminate (reason: power_law_shape)` because the user's "going up vs leveling off" question has no clean answer for power-law growth.
 - `criterion="aicc"` (default) or `"bic"` selects the information criterion. AICc is the default because the small-sample correction matters at the typical input sizes GrowthShape sees (`n` between 8 and 30).
 - Multi-start optimization on the logistic fit (`n_starts=8` by default), sweeping K and t0 across plausible initial guesses to avoid local minima.
 - `evidence_strength` parameter mapped to Kass & Raftery's (1995) interpretive bands: `"positive"` (≥ 0.75), `"strong"` (≥ 0.95, default), `"decisive"` (≥ 0.99). Below the band threshold, the verdict is forced to `indeterminate (reason: ambiguous_evidence)`.

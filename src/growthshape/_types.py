@@ -165,7 +165,7 @@ class BootstrapIntervals:
 
 @dataclass(frozen=True)
 class WeightIntervals:
-    """Bootstrap percentile intervals for the BIC-derived posterior weights.
+    """Bootstrap percentile intervals for the criterion-derived posterior weights.
 
     A narrow interval on the winning weight means the verdict's headline
     confidence is itself robust to resampling; a wide interval means the

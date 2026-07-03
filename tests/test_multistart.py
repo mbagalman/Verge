@@ -82,6 +82,13 @@ def test_invalid_n_starts_raises(bad):
         analyze_growth(time, values, n_boot=0, n_starts=bad)
 
 
+@pytest.mark.parametrize("bad", [0, -1, "8", 8.5, True])
+def test_fit_logistic_rejects_invalid_n_starts(bad):
+    time, values = _logistic_series()
+    with pytest.raises(ValueError, match="n_starts"):
+        fit_logistic(time, values, n_starts=bad)
+
+
 def test_multi_start_does_not_break_clean_decisive_cases():
     # Clean exponential / linear / logistic must keep their decisive
     # verdicts under multi-start; the heuristic init is the global

@@ -11,13 +11,13 @@ The headline answer GrowthShape returns: `accelerating`, `steady`, `leveling off
 GrowthShape's "I can't tell" verdict. Triggered when one of several conditions makes a confident answer dishonest — see [README's "Interpreting the Verdict"](../README.md#interpreting-the-verdict) for the precedence chain. The structured `result.indeterminate_reason` says exactly which condition fired.
 
 ### Power-law shape
-The structured indeterminate reason that fires when a `y = a · t^k` fit wins the BIC competition. Power-law growth has no clean answer to "going up vs leveling off" (depending on `k`, it can be either), so GrowthShape declines rather than misclassifying. Catches polynomial inputs that would otherwise misclassify as logistic.
+The structured indeterminate reason that fires when a `y = a · t^k` fit wins the chosen information-criterion competition. Power-law growth has no clean answer to "going up vs leveling off" (depending on `k`, it can be either), so GrowthShape declines rather than misclassifying. Catches polynomial inputs that would otherwise misclassify as logistic.
 
 ### Fragile verdict
-The structured indeterminate reason that fires when BIC favors a single model decisively but the bootstrap CI on its weight is wider than `max_weight_ci_width` (default 0.40). Means the headline confidence could swap under resampling — treat the leading model as a lean, not a verdict.
+The structured indeterminate reason that fires when the chosen criterion favors a single model decisively but the bootstrap CI on its weight is wider than `max_weight_ci_width` (default 0.40). Means the headline confidence could swap under resampling — treat the leading model as a lean, not a verdict.
 
 ### Signal disagreement
-The structured indeterminate reason that fires when BIC prefers logistic but two or more of the three supporting diagnostics (per-capita slope, log-residual curvature, forecast MAE) do not agree. Catches cases where the criterion's preference rests on shaky evidence.
+The structured indeterminate reason that fires when the chosen criterion prefers logistic but two or more of the three supporting diagnostics (per-capita slope, log-residual curvature, forecast MAE) do not agree. Catches cases where the criterion's preference rests on shaky evidence.
 
 ## Information criteria and posterior weights
 
@@ -50,7 +50,7 @@ The time at which a logistic curve's growth rate is highest — the curve's midp
 Whether the data actually constrains a model's parameters. The logistic's `K` is "unidentifiable" when the observed window only covers an early portion of the bend — many different `K` values fit the data nearly equally well, so the bootstrap interval on `K` would span orders of magnitude. GrowthShape's `logistic_unidentifiable` indeterminate reason catches this: a logistic fit can converge numerically while still being meaningless.
 
 ### Power-law candidate
-The fourth candidate model (added in T-27): `y = a · (t + 1)^k`, fit in log-log space. Diagnostic-only — never becomes the preferred verdict; if it wins the BIC competition the gate forces `indeterminate (reason: power_law_shape)`.
+The fourth candidate model (added in T-27): `y = a · (t + 1)^k`, fit in log-log space. Diagnostic-only — never becomes the preferred verdict; if it wins the chosen information-criterion competition the gate forces `indeterminate (reason: power_law_shape)`.
 
 ## Observation model and assumption checks
 
